@@ -179,9 +179,22 @@ sufficient statistics:</p>
 <span></span>
 <span><span class="va">ll_normal</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">theta</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span></span>
-<span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="va">theta</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span></span>
+<span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">theta</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>  <span class="co"># unconstrained: theta[2] = log(sigma)</span></span>
 <span>  <span class="op">-</span><span class="va">n</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">sigma</span><span class="op">)</span> <span class="op">-</span> <span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="va">sigma</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span> <span class="op">*</span> <span class="op">(</span><span class="va">sum_x2</span> <span class="op">-</span> <span class="fl">2</span> <span class="op">*</span> <span class="va">mu</span> <span class="op">*</span> <span class="va">sum_x</span> <span class="op">+</span> <span class="va">n</span> <span class="op">*</span> <span class="va">mu</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<p><strong>Reparameterization.</strong> Because
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>σ</mi><mo>&gt;</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\sigma &gt; 0</annotation></semantics></math>,
+we optimize over
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><msub><mi>θ</mi><mn>2</mn></msub><mo>=</mo><mo>log</mo><mi>σ</mi></mrow><annotation encoding="application/x-tex">\theta_2 = \log\sigma</annotation></semantics></math>
+so that the parameter space is fully unconstrained — a standard practice
+in MLE fitting. Without this, BFGS can step
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>σ</mi><annotation encoding="application/x-tex">\sigma</annotation></semantics></math>
+through zero, producing <code>NaN</code> from <code>log(sigma)</code>
+and causing divergence. The AD chain rule propagates through
+<code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code> automatically, so <code><a href="../reference/score.html">score()</a></code> and
+<code><a href="../reference/hessian.html">hessian()</a></code> return derivatives with respect to
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="true" form="prefix">(</mo><mi>μ</mi><mo>,</mo><mo>log</mo><mi>σ</mi><mo stretchy="true" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">(\mu, \log\sigma)</annotation></semantics></math>
+without any manual Jacobian adjustment.</p>
 <p>Now compare BFGS <strong>with</strong> and <strong>without</strong>
 the AD gradient:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -189,24 +202,27 @@ the AD gradient:</p>
 <span><span class="va">nll</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span> <span class="op">-</span><span class="fu">ll_normal</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span></span>
 <span><span class="va">ngr</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span> <span class="op">-</span><span class="fu"><a href="../reference/score.html">score</a></span><span class="op">(</span><span class="va">ll_normal</span>, <span class="va">theta</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># Starting value: mu = 0, log(sigma) = 0 (i.e., sigma = 1)</span></span>
+<span><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span></span>
+<span></span>
 <span><span class="co"># Without gradient: optim uses internal finite differences</span></span>
-<span><span class="va">fit_no_gr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>, fn <span class="op">=</span> <span class="va">nll</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
+<span><span class="va">fit_no_gr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="va">start</span>, fn <span class="op">=</span> <span class="va">nll</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># With AD gradient</span></span>
-<span><span class="va">fit_ad_gr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>, fn <span class="op">=</span> <span class="va">nll</span>, gr <span class="op">=</span> <span class="va">ngr</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
+<span><span class="va">fit_ad_gr</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="va">start</span>, fn <span class="op">=</span> <span class="va">nll</span>, gr <span class="op">=</span> <span class="va">ngr</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Compare</span></span>
+<span><span class="co"># Compare (transform theta[2] back to sigma for display)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BFGS (no gradient)"</span>, <span class="st">"BFGS (AD gradient)"</span><span class="op">)</span>,</span>
 <span>  mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span><span class="op">)</span>,</span>
-<span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  fn_calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">counts</span><span class="op">[</span><span class="st">"function"</span><span class="op">]</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">counts</span><span class="op">[</span><span class="st">"function"</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  gr_calls <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">counts</span><span class="op">[</span><span class="st">"gradient"</span><span class="op">]</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">counts</span><span class="op">[</span><span class="st">"gradient"</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  convergence <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_no_gr</span><span class="op">$</span><span class="va">convergence</span>, <span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">convergence</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;               method       mu    sigma fn_calls gr_calls convergence</span></span>
-<span><span class="co">#&gt; 1 BFGS (no gradient) 98.48163 563.4469      101      100           1</span></span>
-<span><span class="co">#&gt; 2 BFGS (AD gradient) 98.48162 563.4456      101      100           1</span></span></code></pre></div>
+<span><span class="co">#&gt; 1 BFGS (no gradient) 5.065079 2.072403       39       16           0</span></span>
+<span><span class="co">#&gt; 2 BFGS (AD gradient) 5.065088 2.072401       39       16           0</span></span></code></pre></div>
 <p>Both reach the same MLE, but the AD gradient version typically uses
 fewer function evaluations because it has exact gradient
 information.</p>
@@ -217,8 +233,8 @@ information.</p>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Analytical MLE: mu ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mle_mu</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">" sigma ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">mle_sigma</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Analytical MLE: mu = 5.06503  sigma = 2.072274</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"optim+AD MLE:   mu ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">6</span><span class="op">)</span>,</span>
-<span>    <span class="st">" sigma ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; optim+AD MLE:   mu = 98.48162  sigma = 563.4456</span></span></code></pre></div>
+<span>    <span class="st">" sigma ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">fit_ad_gr</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; optim+AD MLE:   mu = 5.065088  sigma = 2.072401</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="nlminb-with-ad-gradient-hessian">
@@ -230,22 +246,22 @@ for second-order AD:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">nhess</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">theta</span><span class="op">)</span> <span class="op">-</span><span class="fu"><a href="../reference/hessian.html">hessian</a></span><span class="op">(</span><span class="va">ll_normal</span>, <span class="va">theta</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit_nlminb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/nlminb.html" class="external-link">nlminb</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span><span class="va">fit_nlminb</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/nlminb.html" class="external-link">nlminb</a></span><span class="op">(</span><span class="va">start</span>,</span>
 <span>                     objective <span class="op">=</span> <span class="va">nll</span>,</span>
 <span>                     gradient <span class="op">=</span> <span class="va">ngr</span>,</span>
 <span>                     hessian <span class="op">=</span> <span class="va">nhess</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"nlminb MLE: mu ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit_nlminb</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="fl">6</span><span class="op">)</span>,</span>
-<span>    <span class="st">" sigma ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="va">fit_nlminb</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
+<span>    <span class="st">" sigma ="</span>, <span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">fit_nlminb</span><span class="op">$</span><span class="va">par</span><span class="op">[</span><span class="fl">2</span><span class="op">]</span><span class="op">)</span>, <span class="fl">6</span><span class="op">)</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; nlminb MLE: mu = 5.06503  sigma = 2.072274</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Converged:"</span>, <span class="va">fit_nlminb</span><span class="op">$</span><span class="va">convergence</span> <span class="op">==</span> <span class="fl">0</span>, <span class="st">"\n"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Converged: TRUE</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Iterations:"</span>, <span class="va">fit_nlminb</span><span class="op">$</span><span class="va">iterations</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Iterations: 11</span></span>
+<span><span class="co">#&gt; Iterations: 8</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Function evaluations:"</span>, <span class="va">fit_nlminb</span><span class="op">$</span><span class="va">evaluations</span><span class="op">[</span><span class="st">"function"</span><span class="op">]</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Function evaluations: 12</span></span>
+<span><span class="co">#&gt; Function evaluations: 10</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"Gradient evaluations:"</span>, <span class="va">fit_nlminb</span><span class="op">$</span><span class="va">evaluations</span><span class="op">[</span><span class="st">"gradient"</span><span class="op">]</span>, <span class="st">"\n"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; Gradient evaluations: 11</span></span></code></pre></div>
+<span><span class="co">#&gt; Gradient evaluations: 9</span></span></code></pre></div>
 <p>With exact Hessian information, <code><a href="https://rdrr.io/r/stats/nlminb.html" class="external-link">nlminb()</a></code> can achieve
 faster convergence than quasi-Newton methods (like BFGS) that
 approximate the Hessian from gradient history.</p>
@@ -349,8 +365,6 @@ tracking the negative log-likelihood at each step:</p>
 <code class="sourceCode R"><span><span class="co"># Track convergence for three methods on the Normal(mu, sigma) model</span></span>
 <span><span class="co"># We'll use a callback-style approach via optim's trace</span></span>
 <span></span>
-<span><span class="va">start</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
 <span><span class="co"># Method 1: Nelder-Mead (no gradient)</span></span>
 <span><span class="va">fit_nm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="va">start</span>, fn <span class="op">=</span> <span class="va">nll</span>, method <span class="op">=</span> <span class="st">"Nelder-Mead"</span>,</span>
 <span>                control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
@@ -373,9 +387,9 @@ tracking the negative log-likelihood at each step:</p>
 <span>  nll <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">fit_nm</span><span class="op">$</span><span class="va">value</span>, <span class="va">fit_bfgs</span><span class="op">$</span><span class="va">value</span>, <span class="va">fit_nlm</span><span class="op">$</span><span class="va">objective</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="co">#&gt;                  method fn_evals converged      nll</span></span>
-<span><span class="co">#&gt; 1           Nelder-Mead       77      TRUE 122.8647</span></span>
-<span><span class="co">#&gt; 2        BFGS + AD grad      101     FALSE 634.7822</span></span>
-<span><span class="co">#&gt; 3 nlminb + AD grad+hess       12      TRUE 122.8647</span></span></code></pre></div>
+<span><span class="co">#&gt; 1           Nelder-Mead       99      TRUE 122.8647</span></span>
+<span><span class="co">#&gt; 2        BFGS + AD grad       39      TRUE 122.8647</span></span>
+<span><span class="co">#&gt; 3 nlminb + AD grad+hess       10      TRUE 122.8647</span></span></code></pre></div>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Contour plot with optimizer paths</span></span>
 <span><span class="co"># Recompute paths by running each optimizer and collecting iterates</span></span>
@@ -389,17 +403,17 @@ tracking the negative log-likelihood at each step:</p>
 <span><span class="va">bfgs_trace</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="va">start</span>, fn <span class="op">=</span> <span class="va">bfgs_nll</span>, gr <span class="op">=</span> <span class="va">ngr</span>, method <span class="op">=</span> <span class="st">"BFGS"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $par</span></span>
-<span><span class="co">#&gt; [1]  98.48162 563.44563</span></span>
+<span><span class="co">#&gt; [1] 5.0650877 0.7287078</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $value</span></span>
-<span><span class="co">#&gt; [1] 634.7822</span></span>
+<span><span class="co">#&gt; [1] 122.8647</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $counts</span></span>
 <span><span class="co">#&gt; function gradient </span></span>
-<span><span class="co">#&gt;      101      100 </span></span>
+<span><span class="co">#&gt;       39       16 </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $convergence</span></span>
-<span><span class="co">#&gt; [1] 1</span></span>
+<span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $message</span></span>
 <span><span class="co">#&gt; NULL</span></span>
@@ -415,14 +429,14 @@ tracking the negative log-likelihood at each step:</p>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/optim.html" class="external-link">optim</a></span><span class="op">(</span><span class="va">start</span>, fn <span class="op">=</span> <span class="va">nm_nll</span>, method <span class="op">=</span> <span class="st">"Nelder-Mead"</span>,</span>
 <span>      control <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>maxit <span class="op">=</span> <span class="fl">200</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $par</span></span>
-<span><span class="co">#&gt; [1] 5.064595 2.072179</span></span>
+<span><span class="co">#&gt; [1] 5.0655326 0.7286854</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $value</span></span>
 <span><span class="co">#&gt; [1] 122.8647</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $counts</span></span>
 <span><span class="co">#&gt; function gradient </span></span>
-<span><span class="co">#&gt;       77       NA </span></span>
+<span><span class="co">#&gt;       99       NA </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $convergence</span></span>
 <span><span class="co">#&gt; [1] 0</span></span>
@@ -440,7 +454,7 @@ tracking the negative log-likelihood at each step:</p>
 <span><span class="va">nlm_trace</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/nlminb.html" class="external-link">nlminb</a></span><span class="op">(</span><span class="va">start</span>, objective <span class="op">=</span> <span class="va">nlm_nll</span>, gradient <span class="op">=</span> <span class="va">ngr</span>, hessian <span class="op">=</span> <span class="va">nhess</span><span class="op">)</span></span>
 <span><span class="co">#&gt; $par</span></span>
-<span><span class="co">#&gt; [1] 5.065030 2.072274</span></span>
+<span><span class="co">#&gt; [1] 5.0650296 0.7286466</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $objective</span></span>
 <span><span class="co">#&gt; [1] 122.8647</span></span>
@@ -449,22 +463,27 @@ tracking the negative log-likelihood at each step:</p>
 <span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $iterations</span></span>
-<span><span class="co">#&gt; [1] 11</span></span>
+<span><span class="co">#&gt; [1] 8</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $evaluations</span></span>
 <span><span class="co">#&gt; function gradient </span></span>
-<span><span class="co">#&gt;       12       11 </span></span>
+<span><span class="co">#&gt;       10        9 </span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; $message</span></span>
-<span><span class="co">#&gt; [1] "both X-convergence and relative convergence (5)"</span></span>
+<span><span class="co">#&gt; [1] "relative convergence (4)"</span></span>
 <span><span class="va">nlm_path</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/do.call.html" class="external-link">do.call</a></span><span class="op">(</span><span class="va">rbind</span>, <span class="va">nlm_trace</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Build contour grid</span></span>
 <span><span class="va">mu_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1</span>, <span class="fl">7</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">sigma_grid</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">4</span>, length.out <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">nll_surface</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/outer.html" class="external-link">outer</a></span><span class="op">(</span><span class="va">mu_grid</span>, <span class="va">sigma_grid</span>, <span class="fu"><a href="https://rdrr.io/r/base/Vectorize.html" class="external-link">Vectorize</a></span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">m</span>, <span class="va">s</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="op">-</span><span class="fu">ll_normal</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">s</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">-</span><span class="fu">ll_normal</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">m</span>, <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">s</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Transform paths from (mu, log_sigma) to (mu, sigma) for plotting</span></span>
+<span><span class="va">bfgs_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">bfgs_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">nm_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">nm_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="va">nlm_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">nlm_path</span><span class="op">[</span>, <span class="fl">2</span><span class="op">]</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/par.html" class="external-link">par</a></span><span class="op">(</span>mar <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4</span>, <span class="fl">4</span>, <span class="fl">2</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/contour.html" class="external-link">contour</a></span><span class="op">(</span><span class="va">mu_grid</span>, <span class="va">sigma_grid</span>, <span class="va">nll_surface</span>, nlevels <span class="op">=</span> <span class="fl">30</span>,</span>

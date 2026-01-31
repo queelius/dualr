@@ -61,10 +61,18 @@ sum_x2 <- sum(data_norm^2)
 
 ll_normal <- function(theta) {
   mu <- theta[1]
-  sigma <- theta[2]
+  sigma <- exp(theta[2])  # unconstrained: theta[2] = log(sigma)
   -n * log(sigma) - (1 / (2 * sigma^2)) * (sum_x2 - 2 * mu * sum_x + n * mu^2)
 }
 ```
+
+**Reparameterization.** Because $\sigma > 0$, we optimize over
+$\theta_2 = \log\sigma$ so that the parameter space is fully unconstrained —
+a standard practice in MLE fitting. Without this, BFGS can step $\sigma$
+through zero, producing `NaN` from `log(sigma)` and causing divergence.
+The AD chain rule propagates through `exp()` automatically, so `score()` and
+`hessian()` return derivatives with respect to $(\mu, \log\sigma)$ without
+any manual Jacobian adjustment.
 
 Now compare BFGS **with** and **without** the AD gradient:
 
@@ -73,17 +81,20 @@ Now compare BFGS **with** and **without** the AD gradient:
 nll <- function(theta) -ll_normal(theta)
 ngr <- function(theta) -score(ll_normal, theta)
 
+# Starting value: mu = 0, log(sigma) = 0 (i.e., sigma = 1)
+start <- c(0, 0)
+
 # Without gradient: optim uses internal finite differences
-fit_no_gr <- optim(c(0, 1), fn = nll, method = "BFGS")
+fit_no_gr <- optim(start, fn = nll, method = "BFGS")
 
 # With AD gradient
-fit_ad_gr <- optim(c(0, 1), fn = nll, gr = ngr, method = "BFGS")
+fit_ad_gr <- optim(start, fn = nll, gr = ngr, method = "BFGS")
 
-# Compare
+# Compare (transform theta[2] back to sigma for display)
 data.frame(
   method = c("BFGS (no gradient)", "BFGS (AD gradient)"),
   mu = c(fit_no_gr$par[1], fit_ad_gr$par[1]),
-  sigma = c(fit_no_gr$par[2], fit_ad_gr$par[2]),
+  sigma = exp(c(fit_no_gr$par[2], fit_ad_gr$par[2])),
   fn_calls = c(fit_no_gr$counts["function"], fit_ad_gr$counts["function"]),
   gr_calls = c(fit_no_gr$counts["gradient"], fit_ad_gr$counts["gradient"]),
   convergence = c(fit_no_gr$convergence, fit_ad_gr$convergence)
@@ -99,7 +110,7 @@ mle_mu <- mean(data_norm)
 mle_sigma <- sqrt(mean((data_norm - mle_mu)^2))
 cat("Analytical MLE: mu =", round(mle_mu, 6), " sigma =", round(mle_sigma, 6), "\n")
 cat("optim+AD MLE:   mu =", round(fit_ad_gr$par[1], 6),
-    " sigma =", round(fit_ad_gr$par[2], 6), "\n")
+    " sigma =", round(exp(fit_ad_gr$par[2]), 6), "\n")
 ```
 
 ## `nlminb()` with AD gradient + Hessian
@@ -110,13 +121,13 @@ argument, making it the natural target for second-order AD:
 ```{r}
 nhess <- function(theta) -hessian(ll_normal, theta)
 
-fit_nlminb <- nlminb(c(0, 1),
+fit_nlminb <- nlminb(start,
                      objective = nll,
                      gradient = ngr,
                      hessian = nhess)
 
 cat("nlminb MLE: mu =", round(fit_nlminb$par[1], 6),
-    " sigma =", round(fit_nlminb$par[2], 6), "\n")
+    " sigma =", round(exp(fit_nlminb$par[2]), 6), "\n")
 cat("Converged:", fit_nlminb$convergence == 0, "\n")
 cat("Iterations:", fit_nlminb$iterations, "\n")
 cat("Function evaluations:", fit_nlminb$evaluations["function"], "\n")
@@ -226,8 +237,6 @@ the negative log-likelihood at each step:
 # Track convergence for three methods on the Normal(mu, sigma) model
 # We'll use a callback-style approach via optim's trace
 
-start <- c(0, 1)
-
 # Method 1: Nelder-Mead (no gradient)
 fit_nm <- optim(start, fn = nll, method = "Nelder-Mead",
                 control = list(maxit = 200))
@@ -290,8 +299,13 @@ nlm_path <- do.call(rbind, nlm_trace)
 mu_grid <- seq(-1, 7, length.out = 100)
 sigma_grid <- seq(0.5, 4, length.out = 100)
 nll_surface <- outer(mu_grid, sigma_grid, Vectorize(function(m, s) {
-  -ll_normal(c(m, s))
+  -ll_normal(c(m, log(s)))
 }))
+
+# Transform paths from (mu, log_sigma) to (mu, sigma) for plotting
+bfgs_path[, 2] <- exp(bfgs_path[, 2])
+nm_path[, 2] <- exp(nm_path[, 2])
+nlm_path[, 2] <- exp(nlm_path[, 2])
 
 par(mar = c(4, 4, 2, 1))
 contour(mu_grid, sigma_grid, nll_surface, nlevels = 30,
