@@ -262,3 +262,192 @@ test_that("Exponential distribution: score and hessian", {
   expect_equal(s[1], n/rate0 - sum_x, tolerance = tol_mle)
   expect_equal(H[1,1], -n/rate0^2, tolerance = tol_mle)
 })
+
+# == Vector-gradient optimization tests (0.4.0) ================================
+
+# -- score() matches numerical gradient for all models -----------------------
+
+test_that("1-pass score matches numerical_gradient: Normal(mu,sigma)", {
+  data <- c(1, 2, 3, 4, 5)
+  n <- length(data)
+  sum_x <- sum(data)
+  sum_x2 <- sum(data^2)
+
+  loglik <- function(theta) {
+    mu <- theta[1]
+    sigma <- theta[2]
+    ss <- sum_x2 - 2 * mu * sum_x + n * mu^2
+    -n/2 * log(2 * pi) - n * log(sigma) - 0.5 * ss / sigma^2
+  }
+
+  theta <- c(3, sqrt(2))
+  s <- score(loglik, theta)
+  num_s <- numerical_gradient(loglik, theta)
+  expect_equal(s, num_s, tolerance = tol_mle)
+})
+
+test_that("1-pass score matches numerical_gradient: Poisson(lambda)", {
+  data <- c(1, 3, 2, 0, 4, 2)
+  n <- length(data)
+  sum_x <- sum(data)
+
+  loglik <- function(theta) {
+    lambda <- theta[1]
+    sum_x * log(lambda) - n * lambda - sum(lfactorial(data))
+  }
+
+  theta <- c(2)
+  s <- score(loglik, theta)
+  num_s <- numerical_gradient(loglik, theta)
+  expect_equal(s, num_s, tolerance = tol_mle)
+})
+
+test_that("1-pass score matches numerical_gradient: Gamma(shape,rate)", {
+  data <- c(1.5, 2.1, 0.8, 3.2, 1.9)
+  n <- length(data)
+  sum_x <- sum(data)
+  sum_log_x <- sum(log(data))
+
+  loglik <- function(theta) {
+    alpha <- theta[1]
+    beta <- theta[2]
+    n * alpha * log(beta) - n * lgamma(alpha) +
+      (alpha - 1) * sum_log_x - beta * sum_x
+  }
+
+  theta <- c(2, 1.5)
+  s <- score(loglik, theta)
+  num_s <- numerical_gradient(loglik, theta)
+  expect_equal(s, num_s, tolerance = tol_mle)
+})
+
+# -- hessian() symmetry and numerical accuracy --------------------------------
+
+test_that("p-pass hessian is symmetric: Normal(mu,sigma)", {
+  data <- c(1, 2, 3, 4, 5)
+  n <- length(data)
+  sum_x <- sum(data)
+  sum_x2 <- sum(data^2)
+
+  loglik <- function(theta) {
+    mu <- theta[1]
+    sigma <- theta[2]
+    ss <- sum_x2 - 2 * mu * sum_x + n * mu^2
+    -n/2 * log(2 * pi) - n * log(sigma) - 0.5 * ss / sigma^2
+  }
+
+  theta <- c(3, sqrt(2))
+  H <- hessian(loglik, theta)
+
+  expect_equal(H[1,2], H[2,1], tolerance = 1e-10)
+})
+
+test_that("p-pass hessian matches numerical_hessian: Normal(mu,sigma)", {
+  data <- c(1, 2, 3, 4, 5)
+  n <- length(data)
+  sum_x <- sum(data)
+  sum_x2 <- sum(data^2)
+
+  loglik <- function(theta) {
+    mu <- theta[1]
+    sigma <- theta[2]
+    ss <- sum_x2 - 2 * mu * sum_x + n * mu^2
+    -n/2 * log(2 * pi) - n * log(sigma) - 0.5 * ss / sigma^2
+  }
+
+  theta <- c(3, sqrt(2))
+  H <- hessian(loglik, theta)
+  num_H <- numerical_hessian(loglik, theta)
+  expect_equal(H, num_H, tolerance = 1e-4)
+})
+
+test_that("p-pass hessian matches numerical_hessian: multi-param quadratic", {
+  loglik <- function(theta) {
+    x <- theta[1]
+    y <- theta[2]
+    -(x - 1)^2 - 2 * (y - 3)^2 - 0.5 * x * y
+  }
+
+  theta <- c(0, 0)
+  H <- hessian(loglik, theta)
+  num_H <- numerical_hessian(loglik, theta)
+
+  expect_equal(H, num_H, tolerance = 1e-4)
+  # Cross-derivative should be symmetric
+  expect_equal(H[1,2], H[2,1], tolerance = 1e-10)
+  # Diagonal entries: d2f/dx2 = -2, d2f/dy2 = -4
+  expect_equal(H[1,1], -2, tolerance = tol_mle)
+  expect_equal(H[2,2], -4, tolerance = tol_mle)
+  # Off-diagonal: d2f/dxdy = -0.5
+  expect_equal(H[1,2], -0.5, tolerance = tol_mle)
+})
+
+test_that("p-pass hessian matches numerical: 3-parameter model", {
+  loglik <- function(theta) {
+    a <- theta[1]; b <- theta[2]; c <- theta[3]
+    -(a - 1)^2 - 2 * (b - 2)^2 - 3 * (c - 3)^2 + a * b - 0.5 * b * c
+  }
+
+  theta <- c(1, 2, 3)
+  H <- hessian(loglik, theta)
+  num_H <- numerical_hessian(loglik, theta)
+
+  expect_equal(H, num_H, tolerance = 1e-4)
+  # Verify symmetry
+  expect_equal(H[1,2], H[2,1], tolerance = 1e-10)
+  expect_equal(H[1,3], H[3,1], tolerance = 1e-10)
+  expect_equal(H[2,3], H[3,2], tolerance = 1e-10)
+})
+
+# -- Edge case: constant function returns zeros --------------------------------
+
+test_that("score and hessian handle constant function", {
+  loglik <- function(theta) 42
+
+  theta <- c(1, 2)
+
+  s <- score(loglik, theta)
+  expect_equal(s, c(0, 0))
+
+  H <- hessian(loglik, theta)
+  expect_equal(H, matrix(0, 2, 2))
+})
+
+# -- Edge case: single parameter (p=1) ----------------------------------------
+
+test_that("score and hessian work with single parameter", {
+  loglik <- function(theta) {
+    x <- theta[1]
+    -0.5 * (x - 3)^2
+  }
+
+  theta <- c(1)
+  s <- score(loglik, theta)
+  H <- hessian(loglik, theta)
+
+  expect_equal(s[1], 2, tolerance = tol_mle)  # d/dx = -(x-3) = 2 at x=1
+  expect_equal(H[1,1], -1, tolerance = tol_mle)
+})
+
+# -- observed_information still works ------------------------------------------
+
+test_that("observed_information with vector-gradient backend", {
+  data <- c(1, 2, 3, 4, 5)
+  n <- length(data)
+  sum_x <- sum(data)
+  sum_x2 <- sum(data^2)
+
+  loglik <- function(theta) {
+    mu <- theta[1]
+    sigma <- theta[2]
+    ss <- sum_x2 - 2 * mu * sum_x + n * mu^2
+    -n/2 * log(2 * pi) - n * log(sigma) - 0.5 * ss / sigma^2
+  }
+
+  theta <- c(3, sqrt(2))
+  I <- observed_information(loglik, theta)
+  H <- hessian(loglik, theta)
+
+  expect_equal(I, -H, tolerance = 1e-10)
+})
+

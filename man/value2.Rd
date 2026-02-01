@@ -7,14 +7,15 @@
 value2(d)
 }
 \arguments{
-\item{d}{A nested dual (result of evaluating a function on
-\code{dual2_variable}).}
+\item{d}{A nested dual.}
 }
 \value{
-The numeric function value \eqn{f(x)}.
+The numeric function value.
 }
 \description{
-Extract function value from a second-order dual
+\strong{Deprecated.}
+
+Use \code{\link{deriv_n}(d, 0)} instead.
 }
 \examples{
 x <- dual2_variable(3)

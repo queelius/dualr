@@ -58,6 +58,20 @@ numerical_second_deriv <- function(f, x, h = 1e-5) {
   (f(x + h) - 2 * f(x) + f(x - h)) / (h * h)
 }
 
+#' Numerical n-th derivative via recursive central differences
+#' @param f Function of one numeric argument
+#' @param x Point at which to estimate f^(n)(x)
+#' @param n Derivative order (positive integer)
+#' @param h Step size (larger than for lower orders due to error amplification)
+#' @return Numeric estimate of f^(n)(x)
+numerical_deriv_n <- function(f, x, n, h = 1e-3) {
+  if (n == 0L) return(f(x))
+  if (n == 1L) return((f(x + h) - f(x - h)) / (2 * h))
+  # Recurse: n-th derivative = central difference of (n-1)-th derivative
+  (numerical_deriv_n(f, x + h, n - 1L, h) -
+   numerical_deriv_n(f, x - h, n - 1L, h)) / (2 * h)
+}
+
 # -- Shared test fixture: Normal MLE data ------------------------------------
 
 #' Generate a Normal MLE test fixture with seed 42

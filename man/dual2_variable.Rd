@@ -13,8 +13,9 @@ dual2_variable(x)
 A nested dual: \code{dual(dual(x, 1), dual(1, 0))}.
 }
 \description{
-Constructs a nested dual suitable for computing both first and second
-derivatives of a function at a point.
+\strong{Deprecated.}
+
+Use \code{\link{dual_variable_n}(x, 2)} instead.
 }
 \examples{
 x <- dual2_variable(2)

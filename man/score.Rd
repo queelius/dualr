@@ -17,7 +17,8 @@ A numeric vector of length \code{p} containing the gradient.
 }
 \description{
 Evaluates the gradient of \code{loglik} at \code{theta} using forward-mode
-AD. Runs \code{p} forward passes, one per parameter.
+AD with vector-valued derivatives. Computes the full gradient in a single
+forward pass by seeding each parameter with a unit-vector gradient.
 }
 \details{
 The log-likelihood function should use \code{theta[1]}, \code{theta[2]},

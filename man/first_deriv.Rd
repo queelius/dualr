@@ -10,10 +10,12 @@ first_deriv(d)
 \item{d}{A nested dual.}
 }
 \value{
-The numeric first derivative \eqn{f'(x)}.
+The numeric first derivative.
 }
 \description{
-Extract first derivative from a second-order dual
+\strong{Deprecated.}
+
+Use \code{\link{deriv_n}(d, 1)} instead.
 }
 \examples{
 x <- dual2_variable(3)

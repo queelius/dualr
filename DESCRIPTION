@@ -1,6 +1,6 @@
 Package: dualr
 Title: Forward-Mode Automatic Differentiation via Dual Numbers
-Version: 0.2.0
+Version: 0.5.0
 Authors@R: person("Alexander", "Towell",
                    role = c("aut", "cre"),
                    email = "queelius@gmail.com",
@@ -8,10 +8,10 @@ Authors@R: person("Alexander", "Towell",
 URL: https://github.com/queelius/dualr, https://metafunctor.com
 BugReports: https://github.com/queelius/dualr/issues
 Description: Implements forward-mode automatic differentiation using dual
-    numbers with S4 classes. Supports first- and second-order derivatives
-    through nested duals, with convenience functions for maximum likelihood
-    estimation workflows including score vectors, Hessian matrices, and
-    observed information.
+    numbers with S4 classes. Supports exact arbitrary-order derivatives
+    through recursive nesting of duals, with convenience functions for
+    maximum likelihood estimation workflows including score vectors,
+    Hessian matrices, and observed information.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

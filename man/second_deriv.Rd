@@ -10,10 +10,12 @@ second_deriv(d)
 \item{d}{A nested dual.}
 }
 \value{
-The numeric second derivative \eqn{f''(x)}.
+The numeric second derivative.
 }
 \description{
-Extract second derivative from a second-order dual
+\strong{Deprecated.}
+
+Use \code{\link{deriv_n}(d, 2)} instead.
 }
 \examples{
 x <- dual2_variable(3)

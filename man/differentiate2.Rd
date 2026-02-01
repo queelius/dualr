@@ -7,7 +7,7 @@
 differentiate2(f, x)
 }
 \arguments{
-\item{f}{A function of one argument (numeric or dual).}
+\item{f}{A function of one argument.}
 
 \item{x}{A numeric value at which to differentiate.}
 }
@@ -16,8 +16,9 @@ A named list with components \code{value}, \code{first}, and
 \code{second}.
 }
 \description{
-Evaluates \code{f} at a second-order dual variable seeded at \code{x},
-returning all three quantities.
+\strong{Deprecated.}
+
+Use \code{\link{differentiate_n}(f, x, 2)} instead.
 }
 \examples{
 differentiate2(sin, pi/4)

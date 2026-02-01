@@ -9,6 +9,7 @@
 #   This works with both numeric vectors and dual_vector objects.
 
 # -- Internal: build a dual_vector seeding parameter i with deriv=1 -----------
+# (kept for score_and_hessian, which differentiates a vector-valued function)
 
 .make_dual_vector <- function(theta, seed_index) {
   p <- length(theta)
@@ -19,15 +20,35 @@
   new("dual_vector", duals)
 }
 
-# -- Internal: build a nested dual_vector for Hessian entry (i,j) -------------
+# -- Internal: vector-gradient seeding (1-pass score) -------------------------
+# Seeds all p parameters with unit-vector gradients: dualr(theta_k, e_k)
+# where e_k is the k-th standard basis vector of length p.
+# One forward pass then yields the full gradient in result@deriv.
 
-.make_dual2_vector <- function(theta, i, j) {
+.make_grad_vector <- function(theta) {
   p <- length(theta)
   duals <- vector("list", p)
   for (k in seq_len(p)) {
-    inner_d <- if (k == j) 1 else 0
-    inner <- .dual(theta[k], inner_d)
-    outer_d <- if (k == i) .dual(1, 0) else .dual(0, 0)
+    e_k <- numeric(p)
+    e_k[k] <- 1
+    duals[[k]] <- .dual(theta[k], e_k)
+  }
+  new("dual_vector", duals)
+}
+
+# -- Internal: nested vector-gradient seeding (p-pass Hessian) ----------------
+# For Hessian row i: seeds parameter k with a nested dual where the inner
+# level carries the full vector gradient and the outer level tracks d/d(theta_i).
+# After evaluation, result@deriv@deriv gives the entire i-th row of H.
+
+.make_grad2_vector <- function(theta, i) {
+  p <- length(theta)
+  duals <- vector("list", p)
+  for (k in seq_len(p)) {
+    e_k <- numeric(p)
+    e_k[k] <- 1
+    inner <- .dual(theta[k], e_k)
+    outer_d <- if (k == i) .dual(1, numeric(p)) else .dual(0, numeric(p))
     duals[[k]] <- .dual(inner, outer_d)
   }
   new("dual_vector", duals)
@@ -36,7 +57,8 @@
 #' Compute the score (gradient) of a log-likelihood
 #'
 #' Evaluates the gradient of \code{loglik} at \code{theta} using forward-mode
-#' AD. Runs \code{p} forward passes, one per parameter.
+#' AD with vector-valued derivatives. Computes the full gradient in a single
+#' forward pass by seeding each parameter with a unit-vector gradient.
 #'
 #' The log-likelihood function should use \code{theta[1]}, \code{theta[2]},
 #' etc. to access parameters. This is compatible with the standard R
@@ -56,21 +78,20 @@
 #' score(ll, 1)  # should be 1 (= 2 - 1)
 score <- function(loglik, theta) {
   p <- length(theta)
-  grad <- numeric(p)
-
-  for (i in seq_len(p)) {
-    dual_theta <- .make_dual_vector(theta, i)
-    result <- loglik(dual_theta)
-    grad[i] <- result@deriv
+  dual_theta <- .make_grad_vector(theta)
+  result <- loglik(dual_theta)
+  if (is(result, "dualr")) {
+    d <- result@deriv
+    if (is.numeric(d) && length(d) == p) return(d)
   }
-
-  grad
+  numeric(p)
 }
 
 #' Compute the Hessian of a log-likelihood
 #'
-#' Uses nested duals (second-order AD) to compute the matrix of second
-#' partial derivatives. Exploits symmetry: only \code{p*(p+1)/2} passes.
+#' Uses nested duals with vector-gradient inner derivatives to compute the
+#' matrix of second partial derivatives. Each of \code{p} forward passes
+#' yields an entire row of the Hessian.
 #'
 #' @param loglik A function taking a parameter vector and returning a scalar.
 #' @param theta A numeric vector of parameter values.
@@ -88,12 +109,12 @@ hessian <- function(loglik, theta) {
   H <- matrix(0, nrow = p, ncol = p)
 
   for (i in seq_len(p)) {
-    for (j in seq_len(i)) {
-      dual_theta <- .make_dual2_vector(theta, i, j)
-      result <- loglik(dual_theta)
-      H[i, j] <- result@deriv@deriv
-      H[j, i] <- H[i, j]
+    dual_theta <- .make_grad2_vector(theta, i)
+    result <- loglik(dual_theta)
+    if (is(result, "dualr") && is(result@deriv, "dualr")) {
+      H[i, ] <- result@deriv@deriv
     }
+    # else: row stays zero (constant function)
   }
 
   H

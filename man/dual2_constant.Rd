@@ -13,7 +13,9 @@ dual2_constant(x)
 A nested dual: \code{dual(dual(x, 0), dual(0, 0))}.
 }
 \description{
-Wraps a numeric as a nested dual with all derivative components zero.
+\strong{Deprecated.}
+
+Use \code{\link{dual_constant_n}(x, 2)} instead.
 }
 \examples{
 k <- dual2_constant(5)

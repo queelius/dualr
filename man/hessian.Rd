@@ -15,8 +15,9 @@ hessian(loglik, theta)
 A \code{p x p} numeric matrix (the Hessian).
 }
 \description{
-Uses nested duals (second-order AD) to compute the matrix of second
-partial derivatives. Exploits symmetry: only \code{p*(p+1)/2} passes.
+Uses nested duals with vector-gradient inner derivatives to compute the
+matrix of second partial derivatives. Each of \code{p} forward passes
+yields an entire row of the Hessian.
 }
 \examples{
 # Normal log-likelihood for mu
