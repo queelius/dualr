@@ -178,7 +178,7 @@ test_that("three-way comparison: x^3*sin(x)", {
 
 # -- Normal(mu), known sigma --
 
-test_that("Normal(mu) score equals analytical", {
+test_that("Normal(mu) gradient equals analytical", {
   fix <- make_normal_fixture()
   sigma <- 2
   n <- fix$n
@@ -191,7 +191,7 @@ test_that("Normal(mu) score equals analytical", {
   }
 
   mu0 <- 4.5
-  ad_s <- score(ll, mu0)
+  ad_s <- gradient(ll, mu0)
   analytical_s <- (sum_x - n * mu0) / sigma^2
   expect_equal(ad_s[1], analytical_s, tolerance = 1e-12)
 })
@@ -227,7 +227,7 @@ test_that("Normal(mu) three-way agreement", {
   }
 
   mu0 <- 4.5
-  ad_s <- score(ll, mu0)
+  ad_s <- gradient(ll, mu0)
   ad_h <- hessian(ll, mu0)
   analytical_s <- (sum_x - n * mu0) / sigma^2
   analytical_h <- -n / sigma^2
@@ -242,7 +242,7 @@ test_that("Normal(mu) three-way agreement", {
 
 # -- Normal(mu, sigma) --
 
-test_that("Normal(mu, sigma) score vector matches analytical", {
+test_that("Normal(mu, sigma) gradient vector matches analytical", {
   fix <- make_normal_fixture()
   n <- fix$n
   sum_x <- fix$sum_x
@@ -263,7 +263,7 @@ test_that("Normal(mu, sigma) score vector matches analytical", {
     -n / sigma0 + ss / sigma0^3
   )
 
-  ad_s <- score(ll, theta0)
+  ad_s <- gradient(ll, theta0)
   expect_equal(ad_s, analytical_score, tolerance = 1e-10)
 })
 
@@ -307,7 +307,7 @@ test_that("Normal(mu, sigma) three-way agreement", {
 
   theta0 <- c(4.5, 1.8)
 
-  ad_s <- score(ll, theta0)
+  ad_s <- gradient(ll, theta0)
   ad_h <- hessian(ll, theta0)
   num_s <- numerical_gradient(ll, theta0)
   num_h <- numerical_hessian(ll, theta0)
@@ -318,7 +318,7 @@ test_that("Normal(mu, sigma) three-way agreement", {
 
 # -- Poisson(lambda) --
 
-test_that("Poisson(lambda) score and Hessian match analytical", {
+test_that("Poisson(lambda) gradient and Hessian match analytical", {
   set.seed(123)
   data_pois <- rpois(80, lambda = 3.5)
   n_pois <- length(data_pois)
@@ -331,7 +331,7 @@ test_that("Poisson(lambda) score and Hessian match analytical", {
   }
 
   lam0 <- 3.0
-  ad_s <- score(ll, lam0)
+  ad_s <- gradient(ll, lam0)
   ad_h <- hessian(ll, lam0)
 
   analytical_s <- sum_x_pois / lam0 - n_pois
@@ -354,7 +354,7 @@ test_that("Poisson(lambda) three-way agreement", {
   }
 
   lam0 <- 3.0
-  ad_s <- score(ll, lam0)
+  ad_s <- gradient(ll, lam0)
   ad_h <- hessian(ll, lam0)
   num_s <- numerical_gradient(ll, lam0)
   num_h <- numerical_hessian(ll, lam0)
@@ -369,7 +369,7 @@ test_that("Poisson(lambda) three-way agreement", {
 
 # -- Gamma(shape), known rate --
 
-test_that("Gamma(shape) score and Hessian match analytical", {
+test_that("Gamma(shape) gradient and Hessian match analytical", {
   set.seed(99)
   data_gamma <- rgamma(60, shape = 2.5, rate = 1)
   n_gam <- length(data_gamma)
@@ -384,7 +384,7 @@ test_that("Gamma(shape) score and Hessian match analytical", {
   }
 
   alpha0 <- 2.0
-  ad_s <- score(ll, alpha0)
+  ad_s <- gradient(ll, alpha0)
   ad_h <- hessian(ll, alpha0)
 
   analytical_s <- sum_log_x - n_gam * digamma(alpha0) + n_gam * log(beta_known)
@@ -409,7 +409,7 @@ test_that("Gamma(shape) three-way agreement", {
   }
 
   alpha0 <- 2.0
-  ad_s <- score(ll, alpha0)
+  ad_s <- gradient(ll, alpha0)
   ad_h <- hessian(ll, alpha0)
   num_s <- numerical_gradient(ll, alpha0)
   num_h <- numerical_hessian(ll, alpha0)
@@ -420,7 +420,7 @@ test_that("Gamma(shape) three-way agreement", {
 
 # -- Logistic regression --
 
-test_that("Logistic regression score and Hessian match numerical", {
+test_that("Logistic regression gradient and Hessian match numerical", {
   set.seed(7)
   n_lr <- 50
   X <- cbind(1, rnorm(n_lr), rnorm(n_lr))
@@ -444,7 +444,7 @@ test_that("Logistic regression score and Hessian match numerical", {
   }
 
   beta0 <- c(0, 0, 0)
-  ad_s <- score(ll_dual, beta0)
+  ad_s <- gradient(ll_dual, beta0)
   ad_h <- hessian(ll_dual, beta0)
   num_s <- numerical_gradient(ll_num, beta0)
   num_h <- numerical_hessian(ll_num, beta0)
@@ -477,7 +477,7 @@ test_that("Logistic regression three-way agreement", {
   }
 
   beta0 <- c(0, 0, 0)
-  ad_s <- score(ll_dual, beta0)
+  ad_s <- gradient(ll_dual, beta0)
   ad_h <- hessian(ll_dual, beta0)
   num_s <- numerical_gradient(ll_num, beta0)
   num_h <- numerical_hessian(ll_num, beta0)
@@ -512,9 +512,9 @@ test_that("Newton-Raphson converges to MLE for Normal model", {
   expect_equal(result$estimate[2], fix$mle_sigma, tolerance = 1e-6)
 })
 
-# -- score_and_hessian() --
+# -- jacobian() --
 
-test_that("score_and_hessian() matches hessian() from log-likelihood", {
+test_that("jacobian() of gradient function matches hessian()", {
   fix <- make_normal_fixture()
   n <- fix$n
   sum_x <- fix$sum_x
@@ -525,49 +525,50 @@ test_that("score_and_hessian() matches hessian() from log-likelihood", {
     -n * log(sigma) - (1 / (2 * sigma^2)) * (sum_x2 - 2 * mu * sum_x + n * mu^2)
   }
 
-  score_fn <- function(theta) {
+  # Analytical gradient as a vector-valued function
+  grad_fn <- function(theta) {
     mu <- theta[1]; sigma <- theta[2]
-    s_mu <- (sum_x - n * mu) / sigma^2
-    s_sigma <- -n / sigma + (sum_x2 - 2 * mu * sum_x + n * mu^2) / sigma^3
-    list(s_mu, s_sigma)
+    g_mu <- (sum_x - n * mu) / sigma^2
+    g_sigma <- -n / sigma + (sum_x2 - 2 * mu * sum_x + n * mu^2) / sigma^3
+    list(g_mu, g_sigma)
   }
 
   theta0 <- c(4.5, 1.8)
 
-  result_sh <- score_and_hessian(score_fn, theta0)
+  J <- jacobian(grad_fn, theta0)
   hess_from_ll <- hessian(ll, theta0)
 
-  expect_equal(result_sh$hessian, hess_from_ll, tolerance = 1e-10)
-  expect_equal(result_sh$score, score(ll, theta0), tolerance = 1e-10)
+  # The Jacobian of the gradient is the Hessian
+  expect_equal(J, hess_from_ll, tolerance = 1e-10)
 })
 
 # ============================================================================
 # Vignette 3: Higher-Order Derivatives
 # ============================================================================
 
-test_that("differentiate2() returns correct value, first, second derivatives", {
+test_that("differentiate_n(, 2) returns correct value, d1, d2 derivatives", {
   # sin(x) at pi/4
-  result <- differentiate2(sin, pi / 4)
+  result <- differentiate_n(sin, pi / 4, order = 2)
   expect_equal(result$value, sin(pi / 4), tolerance = 1e-14)
-  expect_equal(result$first, cos(pi / 4), tolerance = 1e-14)
-  expect_equal(result$second, -sin(pi / 4), tolerance = 1e-14)
+  expect_equal(result$d1, cos(pi / 4), tolerance = 1e-14)
+  expect_equal(result$d2, -sin(pi / 4), tolerance = 1e-14)
 })
 
-test_that("differentiate2() for x*exp(-x^2)", {
+test_that("differentiate_n(, 2) for x*exp(-x^2)", {
   f <- function(x) x * exp(-x^2)
-  d2 <- differentiate2(f, 1)
+  d2 <- differentiate_n(f, 1, order = 2)
 
   # f'(x) = exp(-x^2)(1 - 2x^2)
   # f''(x) = exp(-x^2)(-6x + 4x^3)
   expect_equal(d2$value, exp(-1), tolerance = 1e-14)
-  expect_equal(d2$first, exp(-1) * (1 - 2), tolerance = 1e-14)
-  expect_equal(d2$second, exp(-1) * (-6 + 4), tolerance = 1e-14)
+  expect_equal(d2$d1, exp(-1) * (1 - 2), tolerance = 1e-14)
+  expect_equal(d2$d2, exp(-1) * (-6 + 4), tolerance = 1e-14)
 })
 
 test_that("curvature formula gives correct result", {
   curvature <- function(f, x) {
-    d2 <- differentiate2(f, x)
-    abs(d2$second) / (1 + d2$first^2)^(3 / 2)
+    d2 <- differentiate_n(f, x, order = 2)
+    abs(d2$d2) / (1 + d2$d1^2)^(3 / 2)
   }
 
   # sin(x) at pi/2: f'=0, f''=-1, kappa = 1/(1+0)^(3/2) = 1
@@ -579,8 +580,8 @@ test_that("curvature formula gives correct result", {
 
 test_that("Taylor approximation is accurate near expansion point", {
   taylor2 <- function(f, x0, x) {
-    d2 <- differentiate2(f, x0)
-    d2$value + d2$first * (x - x0) + 0.5 * d2$second * (x - x0)^2
+    d2 <- differentiate_n(f, x0, order = 2)
+    d2$value + d2$d1 * (x - x0) + 0.5 * d2$d2 * (x - x0)^2
   }
 
   # exp(x) around x=0
@@ -610,27 +611,27 @@ test_that("manual nested dual approach matches hessian() helper", {
   hess_helper <- hessian(ll, lambda0)
 
   # manual nested dual
-  manual_theta <- dual_vector(list(dual2_variable(lambda0)))
+  manual_theta <- dual_vector(list(dual_variable_n(lambda0, 2)))
   result_manual <- ll(manual_theta)
   manual_hess <- deriv(deriv(result_manual))
 
   expect_equal(hess_helper[1, 1], manual_hess, tolerance = 1e-14)
 })
 
-test_that("dual2_variable basic extraction", {
-  x <- dual2_variable(2)
+test_that("dual_variable_n(x, 2) basic extraction", {
+  x <- dual_variable_n(2, 2)
   result <- x^3
 
-  expect_equal(value2(result), 8)
-  expect_equal(first_deriv(result), 12)
-  expect_equal(second_deriv(result), 12)
+  expect_equal(deriv_n(result, 0), 8)
+  expect_equal(deriv_n(result, 1), 12)
+  expect_equal(deriv_n(result, 2), 12)
 })
 
-test_that("dual2_constant has zero derivatives", {
-  k <- dual2_constant(5)
-  expect_equal(value2(k), 5)
-  expect_equal(first_deriv(k), 0)
-  expect_equal(second_deriv(k), 0)
+test_that("dual_constant_n(x, 2) has zero derivatives", {
+  k <- dual_constant_n(5, 2)
+  expect_equal(deriv_n(k, 0), 5)
+  expect_equal(deriv_n(k, 1), 0)
+  expect_equal(deriv_n(k, 2), 0)
 })
 
 # ============================================================================
@@ -673,7 +674,7 @@ test_that("introduction plot 2: error comparison values are finite and ordered",
   expect_true(err_ad < err_fd)
 })
 
-test_that("mle plot 1: Poisson LL + score grid produces finite values", {
+test_that("mle plot 1: Poisson LL + gradient grid produces finite values", {
   set.seed(123)
   data_pois <- rpois(80, lambda = 3.5)
   n_pois <- length(data_pois)
@@ -687,7 +688,7 @@ test_that("mle plot 1: Poisson LL + score grid produces finite values", {
 
   lam_grid <- seq(2.0, 5.5, length.out = 50)
   ll_vals <- sapply(lam_grid, function(l) ll(l))
-  sc_vals <- sapply(lam_grid, function(l) score(ll, l))
+  sc_vals <- sapply(lam_grid, function(l) gradient(ll, l))
 
   expect_true(all(is.finite(ll_vals)))
   expect_true(all(is.finite(sc_vals)))
@@ -737,8 +738,8 @@ test_that("mle plot 3: Newton-Raphson trace records valid iterates", {
 
 test_that("higher-order plot 1: Taylor vs exact grid is finite", {
   taylor2 <- function(f, x0, x) {
-    d2 <- differentiate2(f, x0)
-    d2$value + d2$first * (x - x0) + 0.5 * d2$second * (x - x0)^2
+    d2 <- differentiate_n(f, x0, order = 2)
+    d2$value + d2$d1 * (x - x0) + 0.5 * d2$d2 * (x - x0)^2
   }
 
   xs <- seq(-2, 3, length.out = 50)
@@ -754,8 +755,8 @@ test_that("higher-order plot 1: Taylor vs exact grid is finite", {
 
 test_that("higher-order plot 2: sin curvature grid is finite", {
   curvature <- function(f, x) {
-    d2 <- differentiate2(f, x)
-    abs(d2$second) / (1 + d2$first^2)^(3 / 2)
+    d2 <- differentiate_n(f, x, order = 2)
+    abs(d2$d2) / (1 + d2$d1^2)^(3 / 2)
   }
 
   xs <- seq(0, 2 * pi, length.out = 50)
@@ -782,7 +783,7 @@ test_that("optimizer plot: contour + path data is finite", {
   }
 
   nll <- function(theta) -ll(theta)
-  ngr <- function(theta) -score(ll, theta)
+  ngr <- function(theta) -gradient(ll, theta)
 
   # BFGS path collection
   trace <- list()
@@ -798,7 +799,7 @@ test_that("optimizer plot: contour + path data is finite", {
   expect_true(nrow(path) >= 2)
 })
 
-test_that("observed_information returns negative Hessian", {
+test_that("-hessian() gives observed information", {
   fix <- make_normal_fixture()
   sigma <- 2
   n <- fix$n
@@ -811,7 +812,7 @@ test_that("observed_information returns negative Hessian", {
   }
 
   mu0 <- 4.5
-  obs_info <- observed_information(ll, mu0)
+  obs_info <- -hessian(ll, mu0)
   hess <- hessian(ll, mu0)
 
   expect_equal(obs_info, -hess)

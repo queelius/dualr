@@ -1,8 +1,8 @@
 ---
-title: "MLE Workflow with dualr"
+title: "Gradient and Hessian Computation with nabla"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{MLE Workflow with dualr}
+  %\VignetteIndexEntry{Gradient and Hessian Computation with nabla}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,16 +12,15 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r setup}
-library(dualr)
+library(nabla)
 ```
 
-This vignette demonstrates `dualr`'s MLE helper functions on several
-statistical models. For each model, we compare derivatives computed
-three ways:
+This vignette demonstrates `nabla`'s `gradient()` and `hessian()` functions
+on several functions. For each, we compare derivatives computed three ways:
 
 1. **Analytical** — hand-derived formulas
 2. **Finite differences** — numerical approximation
-3. **AD (dualr)** — automatic differentiation via `score()` and `hessian()`
+3. **AD (nabla)** — automatic differentiation via `gradient()` and `hessian()`
 
 ## Helper: finite difference utilities
 
@@ -58,9 +57,9 @@ numerical_hessian <- function(f, x, h = 1e-5) {
 }
 ```
 
-## Normal distribution: known sigma, unknown mu
+## Normal log-likelihood: known sigma, unknown mu
 
-The simplest model. Given data $x_1, \ldots, x_n$ with known $\sigma$,
+A simple starting example. Given data $x_1, \ldots, x_n$ with known $\sigma$,
 the log-likelihood for $\mu$ is:
 
 $$\ell(\mu) = -\frac{1}{2\sigma^2} \sum_{i=1}^n (x_i - \mu)^2 + \text{const}$$
@@ -75,31 +74,31 @@ sigma <- 2
 sum_x <- sum(data_norm)
 sum_x2 <- sum(data_norm^2)
 
-ll_normal_mu <- function(theta) {
-  mu <- theta[1]
+ll_normal_mu <- function(x) {
+  mu <- x[1]
   -1 / (2 * sigma^2) * (sum_x2 - 2 * mu * sum_x + n * mu^2)
 }
 
 # Evaluate at mu = 4.5
 mu0 <- 4.5
 
-# AD score and Hessian
-ad_score <- score(ll_normal_mu, mu0)
+# AD gradient and Hessian
+ad_grad <- gradient(ll_normal_mu, mu0)
 ad_hess <- hessian(ll_normal_mu, mu0)
 
-# Analytical: score = (sum_x - n*mu)/sigma^2, Hessian = -n/sigma^2
+# Analytical: gradient = (sum_x - n*mu)/sigma^2, Hessian = -n/sigma^2
 xbar <- mean(data_norm)
-analytical_score <- (sum_x - n * mu0) / sigma^2
+analytical_grad <- (sum_x - n * mu0) / sigma^2
 analytical_hess <- -n / sigma^2
 
 # Numerical
-num_score <- numerical_gradient(ll_normal_mu, mu0)
+num_grad <- numerical_gradient(ll_normal_mu, mu0)
 num_hess <- numerical_hessian(ll_normal_mu, mu0)
 
-# Three-way comparison: Score
+# Three-way comparison: Gradient
 data.frame(
   method = c("Analytical", "Finite Diff", "AD"),
-  score = c(analytical_score, num_score, ad_score)
+  gradient = c(analytical_grad, num_grad, ad_grad)
 )
 
 # Three-way comparison: Hessian
@@ -110,43 +109,43 @@ data.frame(
 ```
 
 All three methods agree to machine precision for this simple quadratic
-log-likelihood. The score is linear in $\mu$ and the Hessian is constant
+function. The gradient is linear in $\mu$ and the Hessian is constant
 ($-n/\sigma^2 = -25$), so there are no higher-order terms for finite
-differences to approximate poorly. This model serves as a sanity check
+differences to approximate poorly. This serves as a sanity check
 that the AD machinery is wired correctly.
 
-The `observed_information()` function returns the negative Hessian:
+The observed information (negative Hessian) is simply:
 
 ```{r}
-obs_info <- observed_information(ll_normal_mu, mu0)
+obs_info <- -hessian(ll_normal_mu, mu0)
 obs_info  # should equal n/sigma^2 = 25
 ```
 
-## Normal distribution: unknown mu and sigma
+## Normal log-likelihood: unknown mu and sigma
 
 Now both $\mu$ and $\sigma$ are unknown. The log-likelihood is:
 
 $$\ell(\mu, \sigma) = -n \log(\sigma) - \frac{1}{2\sigma^2}\sum(x_i - \mu)^2$$
 
 ```{r}
-ll_normal_2 <- function(theta) {
-  mu <- theta[1]
-  sigma <- theta[2]
+ll_normal_2 <- function(x) {
+  mu <- x[1]
+  sigma <- x[2]
   -n * log(sigma) - (1 / (2 * sigma^2)) * (sum_x2 - 2 * mu * sum_x + n * mu^2)
 }
 
 theta0 <- c(4.5, 1.8)
 
 # AD
-ad_score2 <- score(ll_normal_2, theta0)
+ad_grad2 <- gradient(ll_normal_2, theta0)
 ad_hess2 <- hessian(ll_normal_2, theta0)
 
-# Analytical score:
+# Analytical gradient:
 # d/dmu = n*(xbar - mu)/sigma^2
 # d/dsigma = -n/sigma + (1/sigma^3)*sum((xi - mu)^2)
 mu0_2 <- theta0[1]; sigma0_2 <- theta0[2]
 ss <- sum_x2 - 2 * mu0_2 * sum_x + n * mu0_2^2  # sum of (xi - mu)^2
-analytical_score2 <- c(
+analytical_grad2 <- c(
   n * (xbar - mu0_2) / sigma0_2^2,
   -n / sigma0_2 + ss / sigma0_2^3
 )
@@ -163,15 +162,15 @@ analytical_hess2 <- matrix(c(
 ), nrow = 2, byrow = TRUE)
 
 # Numerical
-num_score2 <- numerical_gradient(ll_normal_2, theta0)
+num_grad2 <- numerical_gradient(ll_normal_2, theta0)
 num_hess2 <- numerical_hessian(ll_normal_2, theta0)
 
-# Score comparison
+# Gradient comparison
 data.frame(
   parameter = c("mu", "sigma"),
-  analytical = analytical_score2,
-  finite_diff = num_score2,
-  AD = ad_score2
+  analytical = analytical_grad2,
+  finite_diff = num_grad2,
+  AD = ad_grad2
 )
 
 # Hessian comparison (flatten for display)
@@ -189,7 +188,7 @@ cross-derivative $\partial^2 \ell / \partial\mu\,\partial\sigma$ is non-zero
 when $\mu \ne \bar{x}$, exercising the mixed-partial logic in nested dual
 arithmetic.
 
-## Poisson distribution: unknown lambda
+## Poisson log-likelihood: unknown lambda
 
 Given count data $x_1, \ldots, x_n$ from Poisson($\lambda$):
 
@@ -202,75 +201,76 @@ n_pois <- length(data_pois)
 sum_x_pois <- sum(data_pois)
 sum_lfact <- sum(lfactorial(data_pois))
 
-ll_poisson <- function(theta) {
-  lambda <- theta[1]
+ll_poisson <- function(x) {
+  lambda <- x[1]
   sum_x_pois * log(lambda) - n_pois * lambda - sum_lfact
 }
 
 lam0 <- 3.0
 
 # AD
-ad_score_p <- score(ll_poisson, lam0)
+ad_grad_p <- gradient(ll_poisson, lam0)
 ad_hess_p <- hessian(ll_poisson, lam0)
 
-# Analytical: score = sum_x/lambda - n, Hessian = -sum_x/lambda^2
-analytical_score_p <- sum_x_pois / lam0 - n_pois
+# Analytical: gradient = sum_x/lambda - n, Hessian = -sum_x/lambda^2
+analytical_grad_p <- sum_x_pois / lam0 - n_pois
 analytical_hess_p <- -sum_x_pois / lam0^2
 
 # Numerical
-num_score_p <- numerical_gradient(ll_poisson, lam0)
+num_grad_p <- numerical_gradient(ll_poisson, lam0)
 num_hess_p <- numerical_hessian(ll_poisson, lam0)
 
 data.frame(
-  quantity = c("Score", "Hessian"),
-  analytical = c(analytical_score_p, analytical_hess_p),
-  finite_diff = c(num_score_p, num_hess_p),
-  AD = c(ad_score_p, ad_hess_p)
+  quantity = c("Gradient", "Hessian"),
+  analytical = c(analytical_grad_p, analytical_hess_p),
+  finite_diff = c(num_grad_p, num_hess_p),
+  AD = c(ad_grad_p, ad_hess_p)
 )
 ```
 
 Again, all three methods agree exactly. The Poisson log-likelihood involves
 only `log(lambda)` and linear terms in $\lambda$, so the sufficient
-statistics produce clean rational expressions for the score and Hessian —
+statistics produce clean rational expressions for the gradient and Hessian —
 making this an ideal test case for verifying AD correctness.
 
-### Visualizing the score function
+### Visualizing the gradient
 
-The score (gradient) of a log-likelihood is zero at the MLE. We can see this
-by plotting the log-likelihood and its score together:
+The gradient of a function is zero at its optimum. We can see this
+by plotting the log-likelihood and its gradient together:
 
-```{r fig-poisson-score, fig.width=6, fig.height=4}
+```{r fig-poisson-gradient, fig.width=6, fig.height=4}
 lam_grid <- seq(2.0, 5.5, length.out = 200)
 
-# Compute log-likelihood and score over the grid
+# Compute log-likelihood and gradient over the grid
 ll_vals <- sapply(lam_grid, function(l) ll_poisson(l))
-sc_vals <- sapply(lam_grid, function(l) score(ll_poisson, l))
+gr_vals <- sapply(lam_grid, function(l) gradient(ll_poisson, l))
 
 mle_lam <- sum_x_pois / n_pois  # analytical MLE
 
 par(mar = c(4, 4.5, 2, 4.5))
 plot(lam_grid, ll_vals, type = "l", col = "steelblue", lwd = 2,
      xlab = expression(lambda), ylab = expression(ell(lambda)),
-     main = "Poisson log-likelihood and score")
+     main = "Poisson log-likelihood and gradient")
 par(new = TRUE)
-plot(lam_grid, sc_vals, type = "l", col = "firebrick", lwd = 2, lty = 2,
+plot(lam_grid, gr_vals, type = "l", col = "firebrick", lwd = 2, lty = 2,
      axes = FALSE, xlab = "", ylab = "")
 axis(4, col.axis = "firebrick")
-mtext("Score", side = 4, line = 2.5, col = "firebrick")
+mtext("Gradient", side = 4, line = 2.5, col = "firebrick")
 abline(h = 0, col = "grey60", lty = 3)
 abline(v = mle_lam, col = "grey40", lty = 3)
 points(mle_lam, 0, pch = 4, col = "firebrick", cex = 1.5, lwd = 2)
 legend("topright",
-       legend = c(expression(ell(lambda)), "Score", "MLE"),
+       legend = c(expression(ell(lambda)), "Gradient", "MLE"),
        col = c("steelblue", "firebrick", "grey40"),
        lty = c(1, 2, 3), lwd = c(2, 2, 1), pch = c(NA, NA, 4),
        bty = "n")
 ```
 
-The score crosses zero exactly at the MLE ($\hat\lambda = \bar{x}$), confirming
-that our AD-computed gradient is consistent with the analytical solution.
+The gradient crosses zero exactly at the MLE ($\hat\lambda = \bar{x}$),
+confirming that our AD-computed gradient is consistent with the analytical
+solution.
 
-## Gamma distribution: unknown shape, known rate
+## Gamma log-likelihood: unknown shape, known rate
 
 The Gamma distribution with shape $\alpha$ and known rate $\beta = 1$ has
 log-likelihood:
@@ -287,8 +287,8 @@ sum_log_x <- sum(log(data_gamma))
 sum_x_gam <- sum(data_gamma)
 beta_known <- 1
 
-ll_gamma <- function(theta) {
-  alpha <- theta[1]
+ll_gamma <- function(x) {
+  alpha <- x[1]
   (alpha - 1) * sum_log_x - n_gam * lgamma(alpha) +
     n_gam * alpha * log(beta_known) - beta_known * sum_x_gam
 }
@@ -296,29 +296,29 @@ ll_gamma <- function(theta) {
 alpha0 <- 2.0
 
 # AD
-ad_score_g <- score(ll_gamma, alpha0)
+ad_grad_g <- gradient(ll_gamma, alpha0)
 ad_hess_g <- hessian(ll_gamma, alpha0)
 
-# Analytical: score = sum_log_x - n*digamma(alpha) + n*log(beta)
+# Analytical: gradient = sum_log_x - n*digamma(alpha) + n*log(beta)
 # Hessian = -n*trigamma(alpha)
-analytical_score_g <- sum_log_x - n_gam * digamma(alpha0) + n_gam * log(beta_known)
+analytical_grad_g <- sum_log_x - n_gam * digamma(alpha0) + n_gam * log(beta_known)
 analytical_hess_g <- -n_gam * trigamma(alpha0)
 
 # Numerical
-num_score_g <- numerical_gradient(ll_gamma, alpha0)
+num_grad_g <- numerical_gradient(ll_gamma, alpha0)
 num_hess_g <- numerical_hessian(ll_gamma, alpha0)
 
 data.frame(
-  quantity = c("Score", "Hessian"),
-  analytical = c(analytical_score_g, analytical_hess_g),
-  finite_diff = c(num_score_g, num_hess_g),
-  AD = c(ad_score_g, ad_hess_g)
+  quantity = c("Gradient", "Hessian"),
+  analytical = c(analytical_grad_g, analytical_hess_g),
+  finite_diff = c(num_grad_g, num_hess_g),
+  AD = c(ad_grad_g, ad_hess_g)
 )
 ```
 
 The Gamma model is a key differentiator between AD and finite differences.
 The log-likelihood involves `lgamma(alpha)`, whose derivatives are
-`digamma` and `trigamma` — special functions that `dualr` propagates
+`digamma` and `trigamma` — special functions that `nabla` propagates
 exactly through the chain rule. With finite differences, choosing a good
 step size $h$ for `lgamma` is tricky: too large introduces truncation
 error in the rapidly-varying digamma function, too small amplifies
@@ -342,10 +342,10 @@ eta_true <- X %*% beta_true
 prob_true <- 1 / (1 + exp(-eta_true))
 y <- rbinom(n_lr, 1, prob_true)
 
-ll_logistic <- function(theta) {
+ll_logistic <- function(x) {
   result <- dual_constant(0)
   for (i in seq_len(n_lr)) {
-    eta_i <- theta[1] * X[i, 1] + theta[2] * X[i, 2] + theta[3] * X[i, 3]
+    eta_i <- x[1] * X[i, 1] + x[2] * X[i, 2] + x[3] * X[i, 3]
     result <- result + y[i] * eta_i - log(1 + exp(eta_i))
   }
   result
@@ -354,7 +354,7 @@ ll_logistic <- function(theta) {
 beta0 <- c(0, 0, 0)
 
 # AD
-ad_score_lr <- score(ll_logistic, beta0)
+ad_grad_lr <- gradient(ll_logistic, beta0)
 ad_hess_lr <- hessian(ll_logistic, beta0)
 
 # Numerical
@@ -362,15 +362,15 @@ ll_logistic_num <- function(beta) {
   eta <- X %*% beta
   sum(y * eta - log(1 + exp(eta)))
 }
-num_score_lr <- numerical_gradient(ll_logistic_num, beta0)
+num_grad_lr <- numerical_gradient(ll_logistic_num, beta0)
 num_hess_lr <- numerical_hessian(ll_logistic_num, beta0)
 
-# Score comparison
+# Gradient comparison
 data.frame(
   parameter = c("beta0", "beta1", "beta2"),
-  finite_diff = num_score_lr,
-  AD = ad_score_lr,
-  difference = ad_score_lr - num_score_lr
+  finite_diff = num_grad_lr,
+  AD = ad_grad_lr,
+  difference = ad_grad_lr - num_grad_lr
 )
 
 # Hessian comparison
@@ -386,21 +386,21 @@ operation propagates derivatives without approximation.
 
 ## Newton-Raphson optimizer
 
-We can build a simple optimizer using `score()` and `hessian()` directly.
-Newton-Raphson updates: $\theta_{k+1} = \theta_k - H^{-1} s$ where $s$ is
-the score and $H$ is the Hessian.
+We can build a simple optimizer using `gradient()` and `hessian()` directly.
+Newton-Raphson updates: $\theta_{k+1} = \theta_k - H^{-1} g$ where $g$ is
+the gradient and $H$ is the Hessian.
 
 ```{r}
-newton_raphson <- function(loglik, theta0, tol = 1e-8, max_iter = 50) {
+newton_raphson <- function(f, theta0, tol = 1e-8, max_iter = 50) {
   theta <- theta0
   for (iter in seq_len(max_iter)) {
-    s <- score(loglik, theta)
-    H <- hessian(loglik, theta)
-    step <- solve(H, s)
+    g <- gradient(f, theta)
+    H <- hessian(f, theta)
+    step <- solve(H, g)
     theta <- theta - step
-    if (max(abs(s)) < tol) break
+    if (max(abs(g)) < tol) break
   }
-  list(estimate = theta, iterations = iter, score = s)
+  list(estimate = theta, iterations = iter, gradient = g)
 }
 
 # Apply to Normal(mu, sigma) model
@@ -447,16 +447,16 @@ contour plot:
 
 ```{r fig-nr-path, fig.width=6, fig.height=5}
 # Newton-Raphson with trace
-newton_raphson_trace <- function(loglik, theta0, tol = 1e-8, max_iter = 50) {
+newton_raphson_trace <- function(f, theta0, tol = 1e-8, max_iter = 50) {
   theta <- theta0
   trace <- list(theta)
   for (iter in seq_len(max_iter)) {
-    s <- score(loglik, theta)
-    H <- hessian(loglik, theta)
-    step <- solve(H, s)
+    g <- gradient(f, theta)
+    H <- hessian(f, theta)
+    step <- solve(H, g)
     theta <- theta - step
     trace[[iter + 1L]] <- theta
-    if (max(abs(s)) < tol) break
+    if (max(abs(g)) < tol) break
   }
   list(estimate = theta, iterations = iter, trace = do.call(rbind, trace))
 }
@@ -484,53 +484,45 @@ Newton-Raphson converges in `r result_trace$iterations` iterations — fast
 quadratic convergence is a hallmark of having exact gradient and Hessian
 information from AD.
 
-## `score_and_hessian()`: differentiating the score
+## `jacobian()`: differentiating a vector-valued function
 
-When you have an analytical score function, `score_and_hessian()` differentiates
-it to obtain the Hessian. This is useful when the score has been simplified by hand.
+When a function returns a vector (or list) of outputs, `jacobian()` computes
+the full Jacobian matrix $J_{ij} = \partial f_i / \partial x_j$:
 
 ```{r}
-# Analytical score for Normal(mu, sigma) model
-score_normal <- function(theta) {
-  mu <- theta[1]
-  sigma <- theta[2]
-  s_mu <- (sum_x - n * mu) / sigma^2
-  s_sigma <- -n / sigma + (sum_x2 - 2 * mu * sum_x + n * mu^2) / sigma^3
-  list(s_mu, s_sigma)
+# f: R^2 -> R^3
+f_vec <- function(x) {
+  a <- x[1]; b <- x[2]
+  list(a * b, a^2, sin(b))
 }
 
-# Differentiate the score to get Hessian
-result_sh <- score_and_hessian(score_normal, theta0)
-result_sh$score
+J <- jacobian(f_vec, c(2, pi/4))
+J
 
-# Compare with hessian() applied to log-likelihood
-hess_from_ll <- hessian(ll_normal_2, theta0)
-cat("Hessian from score_and_hessian():\n")
-result_sh$hessian
-cat("\nHessian from hessian(ll):\n")
-hess_from_ll
-cat("\nMax absolute difference:", max(abs(result_sh$hessian - hess_from_ll)), "\n")
+# Analytical Jacobian at (2, pi/4):
+# Row 1: d(a*b)/da = b = pi/4,  d(a*b)/db = a = 2
+# Row 2: d(a^2)/da = 2a = 4,    d(a^2)/db = 0
+# Row 3: d(sin(b))/da = 0,      d(sin(b))/db = cos(b)
 ```
 
-The two approaches should agree to machine precision, since both use exact
-AD — one differentiates the log-likelihood twice, the other differentiates
-the score once.
+This is useful for sensitivity analysis, implicit differentiation, or any
+application where a function maps multiple inputs to multiple outputs.
 
 ## Summary
 
 Across five models of increasing complexity, several patterns emerge:
 
 - **AD matches analytical derivatives to machine precision.** Whether the
-  log-likelihood involves simple polynomials (Normal), special functions
+  function involves simple polynomials (Normal), special functions
   (`lgamma` in Gamma), or loops over observations (logistic regression),
-  `score()` and `hessian()` return exact results.
+  `gradient()` and `hessian()` return exact results.
 - **Finite differences introduce step-size-dependent error.** For simple
   models the error is negligible ($\sim 10^{-10}$), but for loop-based
-  likelihoods it grows to $\sim 10^{-5}$ — large enough to affect
+  functions it grows to $\sim 10^{-5}$ — large enough to affect
   optimization convergence and standard error estimates.
-- **`score_and_hessian()` is useful when the score has been simplified by
-  hand.** It avoids differentiating the full log-likelihood twice, instead
-  differentiating the (simpler) score function once to obtain the Hessian.
+- **`jacobian()` extends to vector-valued functions.** For functions
+  $f: \mathbb{R}^n \to \mathbb{R}^m$, `jacobian()` computes the full
+  $m \times n$ Jacobian matrix using $n$ forward passes.
 - **Newton-Raphson with AD gradients converges in few iterations.** The
   exact Hessian provides the quadratic convergence that Newton's method
   promises in theory — no line search or quasi-Newton approximation needed.

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What This Is
 
-`dualr` is an R package for forward-mode automatic differentiation using dual numbers. It provides exact derivatives at machine precision through any R code (loops, branches, control flow) via operator overloading on S4 classes.
+`nabla` is an R package for exact automatic differentiation. It provides exact derivatives at machine precision through any R code (loops, branches, control flow) via operator overloading on S4 dual number classes.
 
 ## Build & Test Commands
 
@@ -46,9 +46,9 @@ The `Collate:` field in DESCRIPTION defines load order — dependencies flow top
 2. `dual-arithmetic.R` — Arithmetic operators (+, -, *, /, ^) with derivative rules; Ops/Summary group generics
 3. `dual-math.R` — Math/Math2 group generics (trig, exp, log, gamma, etc.); standalone `atan2()`, `log(x, base)`
 4. `dual-special.R` — Non-base-generic functions: `erf()`, `erfc()`, `beta()`, `lbeta()`, `psigamma()`
-5. `dual-higher.R` — Second-order via nested duals: `dual2_variable()`, `differentiate2()`
-6. `mle-helpers.R` — High-level API: `score()`, `hessian()`, `observed_information()`
-7. `dualr-package.R` — Package-level roxygen docs
+5. `dual-higher.R` — Arbitrary-order via nested duals: `dual_variable_n()`, `deriv_n()`, `differentiate_n()`
+6. `derivatives.R` — High-level API: `D()`, `gradient()`, `hessian()`, `jacobian()`
+7. `nabla-package.R` — Package-level roxygen docs
 
 ### Method Dispatch Pattern
 
@@ -65,14 +65,14 @@ The fundamental identity: `f(a + b*ε) = f(a) + f'(a)*b*ε` where `ε² = 0`.
 - Math functions apply chain rule: `deriv(f(x)) = f'(value(x)) * deriv(x)`
 - Second-order derivatives nest duals: `dual(dual(x, 1), dual(1, 0))` — after evaluation, `deriv(deriv(result))` gives f''(x)
 
-### MLE Workflow
+### Multi-Parameter Derivatives
 
-`score()` runs p forward passes (one per parameter, seeding deriv=1 on each in turn). `hessian()` uses nested duals with p*(p+1)/2 passes exploiting symmetry. Both use internal `.make_dual_vector()` / `.make_dual2_vector()` for seeding.
+`D(f)` is the composable total derivative operator. It returns the derivative of `f` as a new function; `D(D(f))` composes for higher-order derivative tensors. Each application of `D` runs `p` forward passes (one per input dimension) using `.make_dual_vector()` for seeding. `gradient()`, `hessian()`, and `jacobian()` are thin wrappers: `gradient(f, x)` = `D(f, x)`, `hessian(f, x)` = `D(f, x, order=2)`, `jacobian(f, x)` = `D(f, x)`.
 
 ## Testing Conventions
 
 - Framework: testthat 3rd edition
-- Test files mirror source structure: `test-arithmetic.R`, `test-math.R`, `test-special.R`, `test-higher-order.R`, `test-mle-helpers.R`
+- Test files mirror source structure: `test-arithmetic.R`, `test-math.R`, `test-special.R`, `test-higher-order.R`, `test-derivatives.R`
 - `test-coverage.R` targets uncovered edge cases specifically
 - `test-optimizer-integration.R` tests AD gradients with `optim()` and `nlminb()`
 - `tests/testthat/helper-numerical.R` provides `central_difference()`, `numerical_gradient()`, `numerical_hessian()` for verification

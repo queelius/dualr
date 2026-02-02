@@ -1,0 +1,43 @@
+{
+  "title": "nabla: Exact Derivatives via Automatic Differentiation",
+  "description": "Exact automatic differentiation for R functions. Provides a composable derivative operator D that computes gradients, Hessians, Jacobians, and arbitrary-order derivative tensors at machine precision. D(D(f)) gives Hessians, D(D(D(f))) gives third-order tensors for skewness of MLEs, and so on to any order. Works through any R code including loops, branches, and control flow.",
+  "creators": [
+    {
+      "name": "Towell, Alexander",
+      "affiliation": "Southern Illinois University Edwardsville",
+      "orcid": "0000-0001-6443-9897"
+    }
+  ],
+  "upload_type": "software",
+  "license": "MIT",
+  "access_right": "open",
+  "keywords": [
+    "automatic differentiation",
+    "dual numbers",
+    "forward-mode AD",
+    "gradient",
+    "Hessian",
+    "Jacobian",
+    "higher-order derivatives",
+    "R",
+    "statistics"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/queelius/nabla",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://cran.r-project.org/package=nabla",
+      "relation": "isIdenticalTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://metafunctor.com",
+      "relation": "isDocumentedBy",
+      "scheme": "url"
+    }
+  ],
+  "version": "0.7.0"
+}

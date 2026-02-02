@@ -16,12 +16,11 @@ test_that("dual_variable_n(x, 1) matches dual_variable", {
   expect_equal(deriv(x1), deriv(x2))
 })
 
-test_that("dual_variable_n(x, 2) matches dual2_variable", {
-  x1 <- dual_variable_n(3, 2)
-  x2 <- dual2_variable(3)
-  expect_equal(value2(x1), value2(x2))
-  expect_equal(first_deriv(x1), first_deriv(x2))
-  expect_equal(second_deriv(x1), second_deriv(x2))
+test_that("dual_variable_n(x, 2) extracts correctly via deriv_n", {
+  x <- dual_variable_n(3, 2)
+  expect_equal(deriv_n(x, 0), 3)
+  expect_equal(deriv_n(x, 1), 1)
+  expect_equal(deriv_n(x, 2), 0)
 })
 
 test_that("dual_variable_n(x, 0) returns plain numeric", {
@@ -65,26 +64,6 @@ test_that("deriv_n rejects negative k", {
   expect_error(deriv_n(dual_variable(1), -1), "non-negative")
 })
 
-# =============================================================================
-# Backward-compatibility: dual2 wrappers still work
-# =============================================================================
-
-test_that("dual2_variable structure (backward compat)", {
-  x <- dual2_variable(3)
-  expect_true(is_dual(x))
-  expect_true(is_dual(value(x)))
-  expect_true(is_dual(deriv(x)))
-  expect_equal(value2(x), 3)
-  expect_equal(first_deriv(x), 1)
-  expect_equal(second_deriv(x), 0)
-})
-
-test_that("dual2_constant structure (backward compat)", {
-  x <- dual2_constant(5)
-  expect_equal(value2(x), 5)
-  expect_equal(first_deriv(x), 0)
-  expect_equal(second_deriv(x), 0)
-})
 
 # =============================================================================
 # Second-order derivatives (existing tests, updated)
@@ -334,26 +313,6 @@ test_that("differentiate_n rejects order < 1", {
   expect_error(differentiate_n(sin, 1, 0), "positive integer")
 })
 
-# =============================================================================
-# differentiate2 backward compatibility
-# =============================================================================
-
-test_that("differentiate2 returns correct structure", {
-  result <- differentiate2(sin, pi/4)
-  expect_true(is.list(result))
-  expect_named(result, c("value", "first", "second"))
-  expect_equal(result$value, sin(pi/4))
-  expect_equal(result$first, cos(pi/4), tolerance = 1e-10)
-  expect_equal(result$second, -sin(pi/4), tolerance = 1e-10)
-})
-
-test_that("differentiate2 with lgamma", {
-  x_val <- 2.5
-  result <- differentiate2(lgamma, x_val)
-  expect_equal(result$value, lgamma(x_val))
-  expect_equal(result$first, digamma(x_val), tolerance = 1e-10)
-  expect_equal(result$second, trigamma(x_val), tolerance = 1e-10)
-})
 
 # =============================================================================
 # Second derivatives against numerical (existing, updated)
@@ -370,10 +329,10 @@ test_that("second derivatives match numerical for compositions", {
 
   for (fn in fns) {
     x_val <- 1.0
-    result <- differentiate2(fn$f, x_val)
+    result <- differentiate_n(fn$f, x_val, order = 2)
     num_second <- numerical_second_deriv(fn$f, x_val)
     expect_equal(
-      result$second, num_second,
+      result$d2, num_second,
       tolerance = tol_2nd,
       label = sprintf("f''(%g) for %s", x_val, fn$name)
     )
@@ -385,15 +344,15 @@ test_that("second derivatives match numerical for compositions", {
 # =============================================================================
 
 test_that("x^3 second derivative via nested duals uses power rule path", {
-  x <- dual2_variable(2)
+  x <- dual_variable_n(2, 2)
   r <- x^3
-  expect_equal(second_deriv(r), 12)
+  expect_equal(deriv_n(r, 2), 12)
 })
 
 test_that("2^x second derivative via nested duals", {
-  x <- dual2_variable(3)
+  x <- dual_variable_n(3, 2)
   r <- 2^x
-  expect_equal(second_deriv(r), 8 * log(2)^2, tolerance = 1e-10)
+  expect_equal(deriv_n(r, 2), 8 * log(2)^2, tolerance = 1e-10)
 })
 
 # =============================================================================
@@ -422,17 +381,17 @@ test_that("polynomial x^5 - 3*x^3 + 2*x, all 5 derivatives", {
 })
 
 # =============================================================================
-# Multi-parameter cases: score/hessian (vector-gradient + nesting)
+# Multi-parameter cases: gradient/hessian (vector-gradient + nesting)
 # =============================================================================
 
-test_that("score of 2-parameter quadratic", {
+test_that("gradient of 2-parameter quadratic", {
   # f(a, b) = -(a - 3)^2 - (b - 5)^2
   # gradient: (2*(3-a), 2*(5-b))
   ll <- function(theta) {
     a <- theta[1]; b <- theta[2]
     -(a - 3)^2 - (b - 5)^2
   }
-  s <- score(ll, c(1, 2))
+  s <- gradient(ll, c(1, 2))
   expect_equal(s, c(4, 6), tolerance = 1e-10)
 })
 
@@ -466,13 +425,13 @@ test_that("hessian of 3-parameter function matches numerical", {
   expect_equal(H_ad, H_num, tolerance = 1e-5)
 })
 
-test_that("score of 3-parameter function matches numerical gradient", {
+test_that("gradient of 3-parameter function matches numerical gradient", {
   ll <- function(theta) {
     a <- theta[1]; b <- theta[2]; cc <- theta[3]
     a * b^2 + b * cc^3 + a^2 * cc
   }
   theta <- c(1.5, 2.0, 0.5)
-  s_ad <- score(ll, theta)
+  s_ad <- gradient(ll, theta)
   s_num <- numerical_gradient(ll, theta)
   expect_equal(s_ad, s_num, tolerance = 1e-6)
 })
@@ -502,7 +461,7 @@ test_that("Normal MLE (mu, sigma): Hessian at MLE matches analytical", {
   expect_equal(H[2, 1], 0, tolerance = 1e-6)
 
   # Score should be ~0 at MLE
-  s <- score(ll, theta_mle)
+  s <- gradient(ll, theta_mle)
   expect_equal(s, c(0, 0), tolerance = 1e-6)
 })
 
@@ -590,7 +549,7 @@ test_that("Hessian of non-linear 2-param function a^2*b + exp(a*b)", {
   theta <- c(a, b)
 
   # Score (gradient)
-  s <- score(ll, theta)
+  s <- gradient(ll, theta)
   eab <- exp(a * b)
   expect_equal(s[1], 2*a*b + b*eab, tolerance = 1e-10)
   expect_equal(s[2], a^2 + a*eab, tolerance = 1e-10)
@@ -618,13 +577,13 @@ test_that("Hessian of 3-param non-linear: exp(a*b*c) + a*sin(b+c)", {
   expect_equal(H_ad[2,3], H_ad[3,2], tolerance = 1e-12)
 })
 
-test_that("score of 4-param non-linear matches numerical gradient", {
+test_that("gradient of 4-param non-linear matches numerical gradient", {
   ll <- function(theta) {
     a <- theta[1]; b <- theta[2]; cc <- theta[3]; d <- theta[4]
     log(a^2 + b^2) + exp(-cc * d) + sin(a * cc) * cos(b * d)
   }
   theta <- c(1.5, 0.8, 0.3, 1.2)
-  s_ad <- score(ll, theta)
+  s_ad <- gradient(ll, theta)
   s_num <- numerical_gradient(ll, theta)
   expect_equal(s_ad, s_num, tolerance = 1e-6)
 })

@@ -1,4 +1,4 @@
 library(testthat)
-library(dualr)
+library(nabla)
 
-test_check("dualr")
+test_check("nabla")

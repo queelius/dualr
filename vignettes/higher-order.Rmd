@@ -12,12 +12,12 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r setup}
-library(dualr)
+library(nabla)
 ```
 
 ## Nested duals
 
-First-order duals give us $f(x)$ and $f'(x)$. To also get $f''(x)$, `dualr`
+First-order duals give us $f(x)$ and $f'(x)$. To also get $f''(x)$, `nabla`
 uses **nested duals** — a dual number whose components are themselves dual
 numbers.
 
@@ -28,58 +28,94 @@ The structure `dual(dual(x, 1), dual(1, 0))` simultaneously tracks:
 - $f''(x)$ — the derivative of the outer derivative
 
 ```{r}
-x <- dual2_variable(2)
+x <- dual_variable_n(2, order = 2)
 
 # Evaluate x^3
 result <- x^3
 
 # Extract all three quantities
-value2(result)       # f(2) = 8
-first_deriv(result)  # f'(2) = 3*4 = 12
-second_deriv(result) # f''(2) = 6*2 = 12
+deriv_n(result, 0)  # f(2) = 8
+deriv_n(result, 1)  # f'(2) = 3*4 = 12
+deriv_n(result, 2)  # f''(2) = 6*2 = 12
 ```
 
-For constants in second-order computations, use `dual2_constant()`:
+For constants in higher-order computations, use `dual_constant_n()`:
 
 ```{r}
-k <- dual2_constant(5)
-value2(k)        # 5
-first_deriv(k)   # 0
-second_deriv(k)  # 0
+k <- dual_constant_n(5, order = 2)
+deriv_n(k, 0)  # 5
+deriv_n(k, 1)  # 0
+deriv_n(k, 2)  # 0
 ```
 
-## The `differentiate2()` helper
+## The `differentiate_n()` helper
 
-For quick evaluation, `differentiate2()` wraps the construction and extraction:
+For quick evaluation, `differentiate_n()` wraps the construction and extraction:
 
 ```{r}
 # Differentiate sin(x) at x = pi/4
-result <- differentiate2(sin, pi / 4)
+result <- differentiate_n(sin, pi / 4, order = 2)
 result$value   # sin(pi/4)
-result$first   # cos(pi/4) = f'
-result$second  # -sin(pi/4) = f''
+result$d1      # cos(pi/4) = f'
+result$d2      # -sin(pi/4) = f''
 ```
 
 Verify against known values:
 
 ```{r}
-result$value - sin(pi / 4)      # ~0
-result$first - cos(pi / 4)      # ~0
-result$second - (-sin(pi / 4))  # ~0
+result$value - sin(pi / 4)     # ~0
+result$d1 - cos(pi / 4)        # ~0
+result$d2 - (-sin(pi / 4))     # ~0
 ```
 
 More complex functions work too:
 
 ```{r}
 f <- function(x) x * exp(-x^2)
-d2 <- differentiate2(f, 1)
+d2 <- differentiate_n(f, 1, order = 2)
 
 # Analytical: f'(x) = exp(-x^2)(1 - 2x^2)
 # f''(x) = exp(-x^2)(-6x + 4x^3)
 analytical_f1 <- exp(-1) * (1 - 2)
 analytical_f2 <- exp(-1) * (-6 + 4)
-d2$first - analytical_f1   # ~0
-d2$second - analytical_f2  # ~0
+d2$d1 - analytical_f1   # ~0
+d2$d2 - analytical_f2   # ~0
+```
+
+## The `D` operator
+
+The `D` operator provides a composable way to compute derivatives of
+multi-parameter functions. `D(f)` returns the derivative of `f` as a new
+function, and compositions `D(D(f))` yield higher-order derivative tensors:
+
+```{r}
+# Gradient of a 2-parameter function
+f <- function(x) x[1]^2 * x[2]
+D(f, c(3, 4))  # gradient: c(24, 9)
+
+# Hessian via D^2
+D(f, c(3, 4), order = 2)
+
+# Composition works identically
+Df <- D(f)
+DDf <- D(Df)
+DDf(c(3, 4))
+```
+
+For vector-valued functions, `D` produces the Jacobian:
+
+```{r}
+g <- function(x) list(x[1] * x[2], x[1]^2 + x[2])
+D(g, c(3, 4))  # 2x2 Jacobian: [[4, 3], [6, 1]]
+```
+
+The convenience functions `gradient()`, `hessian()`, and `jacobian()` are
+thin wrappers around `D`:
+
+```{r}
+gradient(f, c(3, 4))           # == D(f, c(3, 4))
+hessian(f, c(3, 4))            # == D(f, c(3, 4), order = 2)
+jacobian(g, c(3, 4))           # == D(g, c(3, 4))
 ```
 
 ## Curvature analysis
@@ -92,8 +128,8 @@ With second-order AD, we can compute this directly:
 
 ```{r}
 curvature <- function(f, x) {
-  d2 <- differentiate2(f, x)
-  abs(d2$second) / (1 + d2$first^2)^(3/2)
+  d2 <- differentiate_n(f, x, order = 2)
+  abs(d2$d2) / (1 + d2$d1^2)^(3/2)
 }
 
 # Curvature of sin(x) at various points
@@ -155,8 +191,8 @@ We can compute this using nested duals:
 
 ```{r}
 taylor2 <- function(f, x0, x) {
-  d2 <- differentiate2(f, x0)
-  d2$value + d2$first * (x - x0) + 0.5 * d2$second * (x - x0)^2
+  d2 <- differentiate_n(f, x0, order = 2)
+  d2$value + d2$d1 * (x - x0) + 0.5 * d2$d2 * (x - x0)^2
 }
 
 # Approximate exp(x) near x = 0
@@ -203,7 +239,7 @@ at larger distances, illustrating the local nature of polynomial approximation.
 
 ## Connection to MLE: Hessian via nested duals
 
-The `hessian()` function in `dualr` uses nested duals internally. We can
+The `hessian()` function in `nabla` uses the `D` operator internally. We can
 verify this by manually constructing a second-order dual for a log-likelihood
 and comparing with the `hessian()` helper.
 
@@ -234,8 +270,8 @@ hess_helper
 **Method 2**: Manual nested dual construction:
 
 ```{r}
-# Build a dual2_variable wrapped in a dual_vector
-manual_theta <- dual_vector(list(dual2_variable(lambda0)))
+# Build a dual_variable_n wrapped in a dual_vector
+manual_theta <- dual_vector(list(dual_variable_n(lambda0, 2)))
 result_manual <- ll_poisson(manual_theta)
 manual_hess <- deriv(deriv(result_manual))
 manual_hess

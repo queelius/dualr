@@ -1,10 +1,10 @@
-# Tests for integration of score() and hessian() with R's optimizers.
+# Tests for integration of gradient() and hessian() with R's optimizers.
 
 # ============================================================================
-# score() with optim()
+# gradient() with optim()
 # ============================================================================
 
-test_that("score() works as optim() gr argument on a quadratic", {
+test_that("gradient() works as optim() gr argument on a quadratic", {
   # Minimize f(x) = (x - 3)^2: minimum at x = 3
   f_ll <- function(theta) {
     x <- theta[1]
@@ -12,52 +12,52 @@ test_that("score() works as optim() gr argument on a quadratic", {
   }
 
   nll <- function(theta) -f_ll(theta)
-  ngr <- function(theta) -score(f_ll, theta)
+  ngr <- function(theta) -gradient(f_ll, theta)
 
   fit <- optim(0, fn = nll, gr = ngr, method = "BFGS")
   expect_equal(fit$par, 3, tolerance = 1e-6)
   expect_equal(fit$convergence, 0)
 })
 
-test_that("score() with optim() on 2D quadratic", {
+test_that("gradient() with optim() on 2D quadratic", {
   # Minimize f(x,y) = (x-1)^2 + (y-2)^2
   f_ll <- function(theta) {
     -(theta[1] - 1)^2 - (theta[2] - 2)^2
   }
 
   nll <- function(theta) -f_ll(theta)
-  ngr <- function(theta) -score(f_ll, theta)
+  ngr <- function(theta) -gradient(f_ll, theta)
 
   fit <- optim(c(0, 0), fn = nll, gr = ngr, method = "BFGS")
   expect_equal(fit$par, c(1, 2), tolerance = 1e-6)
 })
 
-test_that("negated score gives correct minimization direction", {
-  # score() gives the gradient of the log-likelihood (ascent direction)
-  # -score() gives the descent direction for minimization
+test_that("negated gradient gives correct minimization direction", {
+  # gradient() gives the gradient of the log-likelihood (ascent direction)
+  # -gradient() gives the descent direction for minimization
   f_ll <- function(theta) {
     mu <- theta[1]
     -0.5 * (5 - mu)^2
   }
 
-  s <- score(f_ll, 3)  # d/dmu = (5 - 3) = 2 (positive: ascend toward 5)
+  s <- gradient(f_ll, 3)  # d/dmu = (5 - 3) = 2 (positive: ascend toward 5)
   expect_equal(s[1], 2)
 
-  neg_s <- -score(f_ll, 3)
+  neg_s <- -gradient(f_ll, 3)
   expect_equal(neg_s[1], -2)  # negative: descend toward 5 from below
 })
 
 # ============================================================================
-# score() + hessian() with nlminb()
+# gradient() + hessian() with nlminb()
 # ============================================================================
 
-test_that("score() and hessian() work with nlminb()", {
+test_that("gradient() and hessian() work with nlminb()", {
   f_ll <- function(theta) {
     -(theta[1] - 3)^2 - 2 * (theta[2] + 1)^2
   }
 
   nll <- function(theta) -f_ll(theta)
-  ngr <- function(theta) -score(f_ll, theta)
+  ngr <- function(theta) -gradient(f_ll, theta)
   nhess <- function(theta) -hessian(f_ll, theta)
 
   fit <- nlminb(c(0, 0), objective = nll, gradient = ngr, hessian = nhess)
@@ -82,7 +82,7 @@ test_that("optim with AD gradient matches optim without gradient", {
   }
 
   nll <- function(theta) -ll(theta)
-  ngr <- function(theta) -score(ll, theta)
+  ngr <- function(theta) -gradient(ll, theta)
 
   # Use L-BFGS-B with lower bound on sigma to prevent log(negative) NaN warnings
   start <- c(3, 1.5)
@@ -97,10 +97,10 @@ test_that("optim with AD gradient matches optim without gradient", {
 })
 
 # ============================================================================
-# Standard errors from observed_information() match analytical values
+# Standard errors from -hessian() match analytical values
 # ============================================================================
 
-test_that("SEs from observed_information match analytical for Normal(mu, sigma)", {
+test_that("SEs from -hessian() match analytical for Normal(mu, sigma)", {
   fix <- make_normal_fixture()
   n <- fix$n; sum_x <- fix$sum_x; sum_x2 <- fix$sum_x2
 
@@ -113,7 +113,7 @@ test_that("SEs from observed_information match analytical for Normal(mu, sigma)"
   mle <- c(fix$mle_mu, fix$mle_sigma)
 
   # Observed information at MLE
-  obs_info <- observed_information(ll, mle)
+  obs_info <- -hessian(ll, mle)
   vcov <- solve(obs_info)
   se_ad <- sqrt(diag(vcov))
 
@@ -144,7 +144,7 @@ test_that("Poisson MLE via optim + AD matches analytical", {
   }
 
   nll <- function(theta) -ll(theta)
-  ngr <- function(theta) -score(ll, theta)
+  ngr <- function(theta) -gradient(ll, theta)
 
   fit <- optim(1, fn = nll, gr = ngr, method = "BFGS")
 
@@ -182,7 +182,7 @@ test_that("logistic regression via optim + AD matches glm()", {
   }
 
   nll <- function(theta) -ll_num(theta)
-  ngr <- function(theta) -score(ll_dual, theta)
+  ngr <- function(theta) -gradient(ll_dual, theta)
 
   fit_optim <- optim(c(0, 0, 0), fn = nll, gr = ngr, method = "BFGS")
   fit_glm <- glm(y ~ x1 + x2, family = binomial)
@@ -216,13 +216,13 @@ test_that("logistic regression SEs from AD match glm()", {
   }
 
   nll <- function(theta) -ll_num(theta)
-  ngr <- function(theta) -score(ll_dual, theta)
+  ngr <- function(theta) -gradient(ll_dual, theta)
 
   fit_optim <- optim(c(0, 0, 0), fn = nll, gr = ngr, method = "BFGS")
   fit_glm <- glm(y ~ x1 + x2, family = binomial)
 
   # SEs from AD Hessian
-  obs_info <- observed_information(ll_dual, fit_optim$par)
+  obs_info <- -hessian(ll_dual, fit_optim$par)
   vcov_ad <- solve(obs_info)
   se_ad <- sqrt(diag(vcov_ad))
 
@@ -245,7 +245,7 @@ test_that("nlminb with full AD converges for Normal(mu, sigma)", {
   }
 
   nll <- function(theta) -ll(theta)
-  ngr <- function(theta) -score(ll, theta)
+  ngr <- function(theta) -gradient(ll, theta)
   nhess <- function(theta) -hessian(ll, theta)
 
   fit <- nlminb(c(0, 1), objective = nll, gradient = ngr, hessian = nhess)

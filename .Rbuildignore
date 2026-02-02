@@ -10,3 +10,5 @@
 ^cran-comments\.md$
 ^CLAUDE\.md$
 ^tests/bench
+^CITATION\.cff$
+^\.zenodo\.json$

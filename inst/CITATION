@@ -1,8 +1,10 @@
 bibentry(
   bibtype  = "Manual",
-  title    = "dualr: Forward-Mode Automatic Differentiation via Dual Numbers",
-  author   = person("Alexander", "Towell"),
+  title    = "nabla: Exact Derivatives via Automatic Differentiation",
+  author   = person("Alexander", "Towell",
+                     comment = c(ORCID = "0000-0001-6443-9897")),
   year     = "2026",
-  note     = "R package version 0.1.0",
-  url      = "https://github.com/queelius/dualr"
+  note     = sprintf("R package version %s",
+                     meta$Version),
+  url      = "https://github.com/queelius/nabla"
 )

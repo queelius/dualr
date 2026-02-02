@@ -1,11 +1,10 @@
-#' @title dualr: Forward-Mode Automatic Differentiation via Dual Numbers
+#' @title nabla: Exact Derivatives via Automatic Differentiation
 #'
 #' @description
 #' Implements forward-mode automatic differentiation using dual numbers
 #' with S4 classes. Supports exact arbitrary-order derivatives through
-#' recursive nesting of duals, with convenience functions for maximum
-#' likelihood estimation workflows including score vectors, Hessian
-#' matrices, and observed information.
+#' recursive nesting of duals, with high-level functions for computing
+#' gradients, Hessian matrices, and Jacobians of arbitrary functions.
 #'
 #' @section Core Types:
 #' \describe{
@@ -26,16 +25,15 @@
 #'   \item{\code{\link{dual_variable_n}}}{Create a dual seeded for n-th order differentiation.}
 #'   \item{\code{\link{deriv_n}}}{Extract the k-th derivative from a nested dual result.}
 #'   \item{\code{\link{differentiate_n}}}{Compute f(x) and all derivatives up to order n.}
-#'   \item{\code{\link{dual2_variable}}}{Convenience wrapper for 2nd-order (deprecated).}
-#'   \item{\code{\link{differentiate2}}}{Convenience wrapper for 2nd-order (deprecated).}
 #' }
 #'
-#' @section MLE Helpers:
+#' @section Multi-Parameter Derivatives:
 #' \describe{
-#'   \item{\code{\link{score}}}{Gradient of a log-likelihood.}
-#'   \item{\code{\link{hessian}}}{Hessian matrix of a log-likelihood.}
-#'   \item{\code{\link{observed_information}}}{Negative Hessian.}
-#'   \item{\code{\link{score_and_hessian}}}{Gradient + Hessian from a score function.}
+#'   \item{\code{\link{D}}}{Composable total derivative operator. \code{D(f)}
+#'     returns the derivative function; apply k times for k-th order tensors.}
+#'   \item{\code{\link{gradient}}}{Gradient of a scalar-valued function.}
+#'   \item{\code{\link{hessian}}}{Hessian matrix of a scalar-valued function.}
+#'   \item{\code{\link{jacobian}}}{Jacobian matrix of a vector-valued function.}
 #' }
 #'
 #' @references
@@ -49,6 +47,6 @@
 #' @import methods
 #' @importFrom stats pnorm
 #' @docType package
-#' @name dualr-package
-#' @aliases dualr
+#' @name nabla-package
+#' @aliases nabla
 "_PACKAGE"

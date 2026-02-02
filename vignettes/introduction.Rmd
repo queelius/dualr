@@ -1,8 +1,8 @@
 ---
-title: "Introduction to dualr"
+title: "Introduction to nabla"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Introduction to dualr}
+  %\VignetteIndexEntry{Introduction to nabla}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -12,7 +12,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r setup}
-library(dualr)
+library(nabla)
 ```
 
 ## What are dual numbers?
@@ -266,7 +266,7 @@ ad_result <- deriv(f(dual_variable(x0)))
 
 # Compare
 data.frame(
-  method = c("Analytical", "Finite Diff", "AD (dualr)"),
+  method = c("Analytical", "Finite Diff", "AD (nabla)"),
   derivative = c(analytical, finite_diff, ad_result),
   error_vs_analytical = c(0, finite_diff - analytical, ad_result - analytical)
 )
@@ -288,7 +288,7 @@ errors[errors == 0] <- .Machine$double.eps
 
 par(mar = c(4, 5, 2, 1))
 bp <- barplot(log10(errors),
-              names.arg = c("Finite Diff", "AD (dualr)"),
+              names.arg = c("Finite Diff", "AD (nabla)"),
               col = c("coral", "steelblue"),
               ylab = expression(log[10] ~ "|error|"),
               main = "Absolute error vs analytical derivative",
@@ -313,6 +313,6 @@ To see how this pays off in practice:
   powered entirely by AD.
 - **`vignette("higher-order")`** demonstrates nested duals for second
   derivatives, with applications to curvature analysis and Taylor expansion.
-- **`vignette("optimizer-integration")`** shows how to plug `dualr`
+- **`vignette("optimizer-integration")`** shows how to plug `nabla`
   gradients into R's built-in optimizers (`optim`, `nlminb`) for
   production-quality MLE fitting.

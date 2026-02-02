@@ -1,17 +1,18 @@
-Package: dualr
-Title: Forward-Mode Automatic Differentiation via Dual Numbers
-Version: 0.5.0
+Package: nabla
+Title: Exact Derivatives via Automatic Differentiation
+Version: 0.7.0
 Authors@R: person("Alexander", "Towell",
                    role = c("aut", "cre"),
                    email = "queelius@gmail.com",
                    comment = c(ORCID = "0000-0001-6443-9897"))
-URL: https://github.com/queelius/dualr, https://metafunctor.com
-BugReports: https://github.com/queelius/dualr/issues
-Description: Implements forward-mode automatic differentiation using dual
-    numbers with S4 classes. Supports exact arbitrary-order derivatives
-    through recursive nesting of duals, with convenience functions for
-    maximum likelihood estimation workflows including score vectors,
-    Hessian matrices, and observed information.
+URL: https://github.com/queelius/nabla, https://metafunctor.com
+BugReports: https://github.com/queelius/nabla/issues
+Description: Exact automatic differentiation for R functions. Provides a
+    composable derivative operator D that computes gradients, Hessians,
+    Jacobians, and arbitrary-order derivative tensors at machine precision.
+    D(D(f)) gives Hessians, D(D(D(f))) gives third-order tensors for
+    skewness of MLEs, and so on to any order. Works through any R code
+    including loops, branches, and control flow.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -33,5 +34,5 @@ Collate:
     'dual-math.R'
     'dual-special.R'
     'dual-higher.R'
-    'mle-helpers.R'
-    'dualr-package.R'
+    'derivatives.R'
+    'nabla-package.R'

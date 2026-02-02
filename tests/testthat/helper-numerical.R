@@ -90,24 +90,24 @@ make_normal_fixture <- function() {
 
 # -- Newton-Raphson optimizer for tests --------------------------------------
 
-#' Newton-Raphson optimizer using AD score and Hessian
-#' @param loglik Log-likelihood function of theta vector
+#' Newton-Raphson optimizer using AD gradient and Hessian
+#' @param f Function of parameter vector to maximize
 #' @param theta0 Initial parameter values
-#' @param tol Convergence tolerance on max absolute score
+#' @param tol Convergence tolerance on max absolute gradient
 #' @param max_iter Maximum iterations
 #' @param trace If TRUE, record all iterates
 #' @return List with estimate, iterations, and optionally trace matrix
-newton_raphson <- function(loglik, theta0, tol = 1e-8, max_iter = 50,
+newton_raphson <- function(f, theta0, tol = 1e-8, max_iter = 50,
                            trace = FALSE) {
   theta <- theta0
   trace_list <- if (trace) list(theta) else NULL
   for (iter in seq_len(max_iter)) {
-    s <- score(loglik, theta)
-    H <- hessian(loglik, theta)
-    step <- solve(H, s)
+    g <- gradient(f, theta)
+    H <- hessian(f, theta)
+    step <- solve(H, g)
     theta <- theta - step
     if (trace) trace_list[[iter + 1L]] <- theta
-    if (max(abs(s)) < tol) break
+    if (max(abs(g)) < tol) break
   }
   result <- list(estimate = theta, iterations = iter)
   if (trace) result$trace <- do.call(rbind, trace_list)

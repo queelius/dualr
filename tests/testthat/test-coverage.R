@@ -1,4 +1,4 @@
-# Tests for uncovered code paths across dualr
+# Tests for uncovered code paths across nabla
 # Targets: modulo, integer division, logical ops, summary group,
 # math functions, class display, special functions, standalone math.
 

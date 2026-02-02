@@ -12,15 +12,15 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
 ```{r setup}
-library(dualr)
+library(nabla)
 ```
 
 ## Introduction
 
-The `score()` and `hessian()` functions in `dualr` return **plain numeric
+The `gradient()` and `hessian()` functions in `nabla` return **plain numeric
 vectors and matrices** — exactly what R's built-in optimizers expect. This
 vignette shows how to plug AD derivatives into `optim()` and `nlminb()` for
-maximum likelihood estimation.
+optimization.
 
 **The integration pattern:**
 
@@ -32,12 +32,12 @@ optim(start, fn = nll, gr = ngr, method = "BFGS")
 nlminb(start, objective = nll, gradient = ngr, hessian = nhess)
 ```
 
-**Sign convention:** Both `optim()` and `nlminb()` **minimize**. For MLE
-(maximizing the log-likelihood), negate everything:
+**Sign convention:** Both `optim()` and `nlminb()` **minimize**. For
+maximization (e.g., MLE), negate everything:
 
-- `fn = function(theta) -loglik(theta)`
-- `gr = function(theta) -score(loglik, theta)`
-- `hessian = function(theta) -hessian(loglik, theta)`
+- `fn = function(x) -f(x)`
+- `gr = function(x) -gradient(f, x)`
+- `hessian = function(x) -hessian(f, x)`
 
 **Key difference between optimizers:**
 
@@ -59,18 +59,18 @@ n <- length(data_norm)
 sum_x <- sum(data_norm)
 sum_x2 <- sum(data_norm^2)
 
-ll_normal <- function(theta) {
-  mu <- theta[1]
-  sigma <- exp(theta[2])  # unconstrained: theta[2] = log(sigma)
+ll_normal <- function(x) {
+  mu <- x[1]
+  sigma <- exp(x[2])  # unconstrained: x[2] = log(sigma)
   -n * log(sigma) - (1 / (2 * sigma^2)) * (sum_x2 - 2 * mu * sum_x + n * mu^2)
 }
 ```
 
 **Reparameterization.** Because $\sigma > 0$, we optimize over
-$\theta_2 = \log\sigma$ so that the parameter space is fully unconstrained —
-a standard practice in MLE fitting. Without this, BFGS can step $\sigma$
+$x_2 = \log\sigma$ so that the parameter space is fully unconstrained —
+a standard practice in optimization. Without this, BFGS can step $\sigma$
 through zero, producing `NaN` from `log(sigma)` and causing divergence.
-The AD chain rule propagates through `exp()` automatically, so `score()` and
+The AD chain rule propagates through `exp()` automatically, so `gradient()` and
 `hessian()` return derivatives with respect to $(\mu, \log\sigma)$ without
 any manual Jacobian adjustment.
 
@@ -78,8 +78,8 @@ Now compare BFGS **with** and **without** the AD gradient:
 
 ```{r}
 # Negated versions for minimization
-nll <- function(theta) -ll_normal(theta)
-ngr <- function(theta) -score(ll_normal, theta)
+nll <- function(x) -ll_normal(x)
+ngr <- function(x) -gradient(ll_normal, x)
 
 # Starting value: mu = 0, log(sigma) = 0 (i.e., sigma = 1)
 start <- c(0, 0)
@@ -90,7 +90,7 @@ fit_no_gr <- optim(start, fn = nll, method = "BFGS")
 # With AD gradient
 fit_ad_gr <- optim(start, fn = nll, gr = ngr, method = "BFGS")
 
-# Compare (transform theta[2] back to sigma for display)
+# Compare (transform x[2] back to sigma for display)
 data.frame(
   method = c("BFGS (no gradient)", "BFGS (AD gradient)"),
   mu = c(fit_no_gr$par[1], fit_ad_gr$par[1]),
@@ -101,7 +101,7 @@ data.frame(
 )
 ```
 
-Both reach the same MLE, but the AD gradient version typically uses fewer
+Both reach the same optimum, but the AD gradient version typically uses fewer
 function evaluations because it has exact gradient information.
 
 ```{r}
@@ -119,7 +119,7 @@ cat("optim+AD MLE:   mu =", round(fit_ad_gr$par[1], 6),
 argument, making it the natural target for second-order AD:
 
 ```{r}
-nhess <- function(theta) -hessian(ll_normal, theta)
+nhess <- function(x) -hessian(ll_normal, x)
 
 fit_nlminb <- nlminb(start,
                      objective = nll,
@@ -155,11 +155,11 @@ eta_true <- X %*% beta_true
 prob_true <- 1 / (1 + exp(-eta_true))
 y <- rbinom(n_lr, 1, prob_true)
 
-# Log-likelihood for dualr
-ll_logistic <- function(theta) {
+# Log-likelihood for nabla
+ll_logistic <- function(x) {
   result <- dual_constant(0)
   for (i in seq_len(n_lr)) {
-    eta_i <- theta[1] * X[i, 1] + theta[2] * X[i, 2] + theta[3] * X[i, 3]
+    eta_i <- x[1] * X[i, 1] + x[2] * X[i, 2] + x[3] * X[i, 3]
     result <- result + y[i] * eta_i - log(1 + exp(eta_i))
   }
   result
@@ -175,8 +175,8 @@ ll_logistic_num <- function(beta) {
 Fit with `optim()` using the AD gradient:
 
 ```{r}
-nll_lr <- function(theta) -ll_logistic_num(theta)
-ngr_lr <- function(theta) -score(ll_logistic, theta)
+nll_lr <- function(x) -ll_logistic_num(x)
+ngr_lr <- function(x) -gradient(ll_logistic, x)
 
 fit_lr <- optim(c(0, 0, 0), fn = nll_lr, gr = ngr_lr, method = "BFGS")
 ```
@@ -200,13 +200,13 @@ The AD-based optimizer recovers the same coefficients as `glm()`.
 ## Standard errors from the Hessian
 
 After optimization, the observed information matrix (negative Hessian at the
-MLE) provides the asymptotic variance-covariance matrix of the estimator:
+optimum) provides the asymptotic variance-covariance matrix:
 
-$$\text{Var}(\hat\theta) \approx I(\hat\theta)^{-1} = [-H(\hat\theta)]^{-1}$$
+$$\text{Var}(\hat\theta) \approx [-H(\hat\theta)]^{-1}$$
 
 ```{r}
-# Observed information at the MLE
-obs_info <- observed_information(ll_logistic, fit_lr$par)
+# Observed information at the optimum (negative Hessian)
+obs_info <- -hessian(ll_logistic, fit_lr$par)
 
 # Variance-covariance matrix
 vcov_ad <- solve(obs_info)
@@ -266,9 +266,9 @@ data.frame(
 
 # Helper: collect iterates via BFGS
 bfgs_trace <- list()
-bfgs_nll <- function(theta) {
-  bfgs_trace[[length(bfgs_trace) + 1L]] <<- theta
-  -ll_normal(theta)
+bfgs_nll <- function(x) {
+  bfgs_trace[[length(bfgs_trace) + 1L]] <<- x
+  -ll_normal(x)
 }
 bfgs_trace <- list()
 optim(start, fn = bfgs_nll, gr = ngr, method = "BFGS")
@@ -276,9 +276,9 @@ bfgs_path <- do.call(rbind, bfgs_trace)
 
 # Helper: collect iterates via Nelder-Mead
 nm_trace <- list()
-nm_nll <- function(theta) {
-  nm_trace[[length(nm_trace) + 1L]] <<- theta
-  -ll_normal(theta)
+nm_nll <- function(x) {
+  nm_trace[[length(nm_trace) + 1L]] <<- x
+  -ll_normal(x)
 }
 nm_trace <- list()
 optim(start, fn = nm_nll, method = "Nelder-Mead",
@@ -287,9 +287,9 @@ nm_path <- do.call(rbind, nm_trace)
 
 # Helper: collect iterates via nlminb
 nlm_trace <- list()
-nlm_nll <- function(theta) {
-  nlm_trace[[length(nlm_trace) + 1L]] <<- theta
-  -ll_normal(theta)
+nlm_nll <- function(x) {
+  nlm_trace[[length(nlm_trace) + 1L]] <<- x
+  -ll_normal(x)
 }
 nlm_trace <- list()
 nlminb(start, objective = nlm_nll, gradient = ngr, hessian = nhess)
@@ -345,15 +345,15 @@ most direct path to the optimum.
 
 | What you need | Function | R optimizer argument |
 |---|---|---|
-| Gradient | `score(loglik, theta)` | `gr` in `optim()`, `gradient` in `nlminb()` |
-| Hessian | `hessian(loglik, theta)` | `hessian` in `nlminb()` only |
-| Observed information | `observed_information(loglik, theta)` | Post-optimization: invert for SEs |
+| Gradient | `gradient(f, x)` | `gr` in `optim()`, `gradient` in `nlminb()` |
+| Hessian | `hessian(f, x)` | `hessian` in `nlminb()` only |
+| Observed information | `-hessian(f, x)` | Post-optimization: invert for SEs |
 
 **When to use which optimizer:**
 
-- **`optim()` with BFGS** — good default; use `gr = function(theta) -score(ll, theta)`
+- **`optim()` with BFGS** — good default; use `gr = function(x) -gradient(f, x)`
 - **`nlminb()`** — when you want second-order convergence; supply both gradient and Hessian
 - **Nelder-Mead** — fallback for non-smooth objectives; doesn't benefit from AD
 
-**Remember the sign convention:** optimizers minimize, MLE maximizes. Negate
-the log-likelihood, score, and Hessian when passing to the optimizer.
+**Remember the sign convention:** optimizers minimize. For maximization, negate
+the function, gradient, and Hessian when passing to the optimizer.

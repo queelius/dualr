@@ -2,12 +2,12 @@
 
 0 errors | 0 warnings | 1 note
 
-* NOTE: "unable to verify current time" — infrastructure issue, not package-related.
+* This is a new submission.
 
 ## Test environments
 
-* Local Linux (Ubuntu 24.04), R 4.3.3
-* GitHub Actions: ubuntu-latest (R-release, R-devel), macos-latest (R-release), windows-latest (R-release)
+* Local: Ubuntu 24.04.3 LTS, R 4.3.3
+* GitHub Actions: Ubuntu (release, devel), macOS (release), Windows (release)
 
 ## Downstream dependencies
 
