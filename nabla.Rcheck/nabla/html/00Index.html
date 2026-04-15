@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head><title>R: Exact Derivatives via Automatic Differentiation</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+<link rel="stylesheet" type="text/css" href="R.css" />
+</head><body><div class="container">
+<h1> Exact Derivatives via Automatic Differentiation
+<img class="toplogo" src="../../../doc/html/Rlogo.svg" alt="[R logo]" />
+</h1>
+<hr/>
+<div style="text-align: center;">
+<a href="../../../doc/html/packages.html"><img class="arrow" src="../../../doc/html/left.jpg" alt="[Up]" /></a>
+<a href="../../../doc/html/index.html"><img class="arrow" src="../../../doc/html/up.jpg" alt="[Top]" /></a>
+</div><h2>Documentation for package &lsquo;nabla&rsquo; version 0.7.1</h2>
+
+<ul><li><a href="../DESCRIPTION">DESCRIPTION file</a>.</li>
+<li><a href="../doc/index.html">User guides, package vignettes and other documentation.</a></li>
+<li><a href="../NEWS">Package NEWS</a>.</li>
+</ul>
+
+<h2>Help Pages</h2>
+
+
+<table style="width: 100%;">
+<tr><td style="width: 25%;"><a href="nabla-package.html">nabla-package</a></td>
+<td>nabla: Exact Derivatives via Automatic Differentiation</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">!-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">*-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">+-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">--method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">/-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-coerce.html">as.numeric-method</a></td>
+<td>Coerce dual to numeric</td></tr>
+<tr><td style="width: 25%;"><a href="dual-atan2.html">atan2-method</a></td>
+<td>Two-argument arctangent for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="beta.html">beta</a></td>
+<td>Beta function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="beta.html">beta-method</a></td>
+<td>Beta function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-combine.html">c-method</a></td>
+<td>Combine dual numbers into a dual_vector</td></tr>
+<tr><td style="width: 25%;"><a href="D.html">D</a></td>
+<td>Composable total derivative operator</td></tr>
+<tr><td style="width: 25%;"><a href="deriv.html">deriv</a></td>
+<td>Extract the derivative (tangent) part of a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="deriv.html">deriv-method</a></td>
+<td>Extract the derivative (tangent) part of a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="deriv_n.html">deriv_n</a></td>
+<td>Extract the k-th derivative from a nested dual result</td></tr>
+<tr><td style="width: 25%;"><a href="differentiate_n.html">differentiate_n</a></td>
+<td>Compute a function value and all derivatives up to order n</td></tr>
+<tr><td style="width: 25%;"><a href="dual.html">dual</a></td>
+<td>Create a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">dual-arithmetic</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-atan2.html">dual-atan2</a></td>
+<td>Two-argument arctangent for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-coerce.html">dual-coerce</a></td>
+<td>Coerce dual to numeric</td></tr>
+<tr><td style="width: 25%;"><a href="dual-combine.html">dual-combine</a></td>
+<td>Combine dual numbers into a dual_vector</td></tr>
+<tr><td style="width: 25%;"><a href="dual-is-numeric.html">dual-is-numeric</a></td>
+<td>Check if a dual number is numeric</td></tr>
+<tr><td style="width: 25%;"><a href="dual-log.html">dual-log</a></td>
+<td>Logarithm with optional base for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math.html">dual-math</a></td>
+<td>Math group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math2.html">dual-math2</a></td>
+<td>Math2 group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-maxmin.html">dual-maxmin</a></td>
+<td>Piecewise max and min for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-show.html">dual-show</a></td>
+<td>Display a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="dual-summary.html">dual-summary</a></td>
+<td>Summary group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dualr-class.html">dualr-class</a></td>
+<td>Dual Number Class for Automatic Differentiation</td></tr>
+<tr><td style="width: 25%;"><a href="dual_constant.html">dual_constant</a></td>
+<td>Create a dual constant (derivative seed = 0)</td></tr>
+<tr><td style="width: 25%;"><a href="dual_constant_n.html">dual_constant_n</a></td>
+<td>Create a constant dual for n-th order differentiation</td></tr>
+<tr><td style="width: 25%;"><a href="dual_variable.html">dual_variable</a></td>
+<td>Create a dual variable (derivative seed = 1)</td></tr>
+<tr><td style="width: 25%;"><a href="dual_variable_n.html">dual_variable_n</a></td>
+<td>Create a dual seeded for n-th order differentiation</td></tr>
+<tr><td style="width: 25%;"><a href="dual_vector.html">dual_vector</a></td>
+<td>Create a vector of dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual_vector-access.html">dual_vector-access</a></td>
+<td>Indexing and length for dual_vector</td></tr>
+<tr><td style="width: 25%;"><a href="dual_vector-class.html">dual_vector-class</a></td>
+<td>Dual Number Vector</td></tr>
+<tr><td style="width: 25%;"><a href="erf.html">erf</a></td>
+<td>Error function</td></tr>
+<tr><td style="width: 25%;"><a href="erf.html">erf-method</a></td>
+<td>Error function</td></tr>
+<tr><td style="width: 25%;"><a href="erfc.html">erfc</a></td>
+<td>Complementary error function</td></tr>
+<tr><td style="width: 25%;"><a href="erfc.html">erfc-method</a></td>
+<td>Complementary error function</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math.html">exp-method</a></td>
+<td>Math group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="gradient.html">gradient</a></td>
+<td>Compute the gradient of a scalar-valued function</td></tr>
+<tr><td style="width: 25%;"><a href="hessian.html">hessian</a></td>
+<td>Compute the Hessian of a scalar-valued function</td></tr>
+<tr><td style="width: 25%;"><a href="dual-is-numeric.html">is.numeric-method</a></td>
+<td>Check if a dual number is numeric</td></tr>
+<tr><td style="width: 25%;"><a href="is_dual.html">is_dual</a></td>
+<td>Test whether an object is a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="jacobian.html">jacobian</a></td>
+<td>Compute the Jacobian of a vector-valued function</td></tr>
+<tr><td style="width: 25%;"><a href="lbeta.html">lbeta</a></td>
+<td>Log-beta function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="lbeta.html">lbeta-method</a></td>
+<td>Log-beta function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual_vector-access.html">length-method</a></td>
+<td>Indexing and length for dual_vector</td></tr>
+<tr><td style="width: 25%;"><a href="dual-log.html">log-method</a></td>
+<td>Logarithm with optional base for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math.html">Math-method</a></td>
+<td>Math group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math2.html">Math2-method</a></td>
+<td>Math2 group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-maxmin.html">max-method</a></td>
+<td>Piecewise max and min for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-maxmin.html">min-method</a></td>
+<td>Piecewise max and min for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="nabla-package.html">nabla</a></td>
+<td>nabla: Exact Derivatives via Automatic Differentiation</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">Ops-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="psigamma.html">psigamma</a></td>
+<td>Polygamma function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="psigamma.html">psigamma-method</a></td>
+<td>Polygamma function for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-show.html">show-method</a></td>
+<td>Display a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="dual-math.html">sqrt-method</a></td>
+<td>Math group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="dual-summary.html">Summary-method</a></td>
+<td>Summary group generic for dual numbers</td></tr>
+<tr><td style="width: 25%;"><a href="value.html">value</a></td>
+<td>Extract the value (primal) part of a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="value.html">value-method</a></td>
+<td>Extract the value (primal) part of a dual number</td></tr>
+<tr><td style="width: 25%;"><a href="dual_vector-access.html">[-method</a></td>
+<td>Indexing and length for dual_vector</td></tr>
+<tr><td style="width: 25%;"><a href="dual-arithmetic.html">^-method</a></td>
+<td>Arithmetic and comparison operators for dual numbers</td></tr>
+</table>
+</div></body></html>

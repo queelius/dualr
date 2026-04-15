@@ -1,0 +1,45 @@
+beta                    Beta function for dual numbers
+D                       Composable total derivative operator
+deriv                   Extract the derivative (tangent) part of a dual
+                        number
+deriv_n                 Extract the k-th derivative from a nested dual
+                        result
+differentiate_n         Compute a function value and all derivatives up
+                        to order n
+dual                    Create a dual number
+dual_constant           Create a dual constant (derivative seed = 0)
+dual_constant_n         Create a constant dual for n-th order
+                        differentiation
+dual_variable           Create a dual variable (derivative seed = 1)
+dual_variable_n         Create a dual seeded for n-th order
+                        differentiation
+dual_vector             Create a vector of dual numbers
+dual_vector-access      Indexing and length for dual_vector
+dual_vector-class       Dual Number Vector
+dual-arithmetic         Arithmetic and comparison operators for dual
+                        numbers
+dual-atan2              Two-argument arctangent for dual numbers
+dual-coerce             Coerce dual to numeric
+dual-combine            Combine dual numbers into a dual_vector
+dual-is-numeric         Check if a dual number is numeric
+dual-log                Logarithm with optional base for dual numbers
+dual-math               Math group generic for dual numbers
+dual-math2              Math2 group generic for dual numbers
+dual-maxmin             Piecewise max and min for dual numbers
+dual-show               Display a dual number
+dual-summary            Summary group generic for dual numbers
+dualr-class             Dual Number Class for Automatic Differentiation
+erf                     Error function
+erfc                    Complementary error function
+gradient                Compute the gradient of a scalar-valued
+                        function
+hessian                 Compute the Hessian of a scalar-valued function
+is_dual                 Test whether an object is a dual number
+jacobian                Compute the Jacobian of a vector-valued
+                        function
+lbeta                   Log-beta function for dual numbers
+nabla-package           nabla: Exact Derivatives via Automatic
+                        Differentiation
+psigamma                Polygamma function for dual numbers
+value                   Extract the value (primal) part of a dual
+                        number

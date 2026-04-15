@@ -1,0 +1,15 @@
+* installing *source* package ‘nabla’ ...
+** using staged installation
+** R
+** inst
+** byte-compile and prepare package for lazy loading
+Creating a new generic function for ‘deriv’ in package ‘nabla’
+Creating a generic function for ‘atan2’ from package ‘base’ in package ‘nabla’
+** help
+*** installing help indices
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (nabla)
